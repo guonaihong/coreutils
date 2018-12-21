@@ -6,3 +6,4 @@ coreutils项目是gnu coreutils的扩展
 ## 已完成命令如下 
 * tee [详情](./tee/README.md)
 * paste [详情](./paste/README.md)
+* cat [详情](./cat/README.md)
