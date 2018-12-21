@@ -32,7 +32,7 @@ func main() {
 		}
 
 		defer f.Close()
-        r = f
+		r = f
 	}
 
 	br := bufio.NewReader(r)
@@ -57,7 +57,7 @@ func main() {
 			break
 		}
 
-        l = append(l, '\n')
+		l = append(l, '\n')
 		if *squeezeBlank {
 			if len(bytes.TrimSpace(l)) == 0 {
 				isSpace++
@@ -66,7 +66,7 @@ func main() {
 			}
 
 			if isSpace > 1 {
-                count--
+				count--
 				continue
 			}
 		}
@@ -86,7 +86,7 @@ func main() {
 			}
 		}
 
-        os.Stdout.Write(l)
+		os.Stdout.Write(l)
 	}
 
 }
