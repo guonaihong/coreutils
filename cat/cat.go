@@ -19,24 +19,6 @@ func main() {
 
 	flag.Parse()
 
-	var r io.Reader
-
-	r = os.Stdin
-
-	args := flag.Args()
-	if len(args) > 0 {
-		f, err := os.Open(args[0])
-		if err != nil {
-			fmt.Printf("cat: %s\n", err)
-			os.Exit(1)
-		}
-
-		defer f.Close()
-		r = f
-	}
-
-	br := bufio.NewReader(r)
-
 	var oldNew []string
 
 	if *showEnds {
@@ -47,46 +29,63 @@ func main() {
 		oldNew = append(oldNew, "\t", "^I")
 	}
 
-	replacer := strings.NewReplacer(oldNew...)
-	count := 1
+	catCore := func(r io.Reader) {
+		br := bufio.NewReader(r)
+		replacer := strings.NewReplacer(oldNew...)
 
-	isSpace := 0
-	for ; ; count++ {
-		l, _, c := br.ReadLine()
-		if c == io.EOF {
-			break
-		}
-
-		l = append(l, '\n')
-		if *squeezeBlank {
-			if len(bytes.TrimSpace(l)) == 0 {
-				isSpace++
-			} else {
-				isSpace = 0
+		isSpace := 0
+		for count := 1; ; count++ {
+			l, _, c := br.ReadLine()
+			if c == io.EOF {
+				break
 			}
 
-			if isSpace > 1 {
-				count--
-				continue
+			l = append(l, '\n')
+			if *squeezeBlank {
+				if len(bytes.TrimSpace(l)) == 0 {
+					isSpace++
+				} else {
+					isSpace = 0
+				}
+
+				if isSpace > 1 {
+					count--
+					continue
+				}
 			}
-		}
 
-		if len(oldNew) > 0 {
-			l = []byte(replacer.Replace(string(l)))
-		}
-
-		if *numberNonblank || *number {
-			if *numberNonblank {
-				count--
+			if len(oldNew) > 0 {
+				l = []byte(replacer.Replace(string(l)))
 			}
 
-			if !(*numberNonblank && len(l) == 1) {
-				newLine := append([]byte{}, []byte(fmt.Sprintf("%6d  ", count))...)
-				l = append(newLine, l...)
-			}
-		}
+			if *numberNonblank || *number {
+				if *numberNonblank {
+					count--
+				}
 
-		os.Stdout.Write(l)
+				if !(*numberNonblank && len(l) == 1) {
+					newLine := append([]byte{}, []byte(fmt.Sprintf("%6d  ", count))...)
+					l = append(newLine, l...)
+				}
+			}
+
+			os.Stdout.Write(l)
+		}
 	}
 
+	args := flag.Args()
+	if len(args) > 0 {
+		for _, fileName := range args {
+			f, err := os.Open(fileName)
+			if err != nil {
+				fmt.Printf("cat: %s\n", err)
+				os.Exit(1)
+			}
+
+			catCore(f)
+			f.Close()
+		}
+		return
+	}
+	catCore(os.Stdout)
 }
