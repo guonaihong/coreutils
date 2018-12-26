@@ -8,3 +8,4 @@ coreutils项目是gnu coreutils的扩展
 * paste [详情](./paste/README.md)
 * cat [详情](./cat/README.md)
 * yes [详情](./yes/README.md)
+* whoami [详情](./whoami/README.md)
