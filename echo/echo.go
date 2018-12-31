@@ -148,6 +148,7 @@ func main() {
 
 						i = i + 1 + n - 1
 						c = byte(c0)
+					case '\\':
 					default:
 						fmt.Print("\\")
 					}
