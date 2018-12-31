@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/guonaihong/flag"
 	"os"
-"strings"
+	"strings"
 )
 
 func exist(fileName string) bool {
@@ -17,7 +17,7 @@ func deleteTrailingSlashes(s string) string {
 }
 
 func readYes() bool {
-    b := make([]byte, 512)
+	b := make([]byte, 512)
 	n, err := os.Stdin.Read(b)
 	if err != nil {
 		return false
@@ -89,7 +89,7 @@ func main() {
 			// if target does not exist, s is renamed target
 			newTarget = target
 
-            mode := fi.Mode()
+			mode := fi.Mode()
 			perm := mode.Perm()
 			if !*force && int(perm)&os.O_WRONLY == 0 {
 				fmt.Printf("mv: replace '%s', overriding mode %x (%v)?", newTarget, perm, perm)
