@@ -117,7 +117,7 @@ mv -b --suffix=.bak file file2
 If file2 exists, it will be renamed to file2.bak.
 
 ```bash
-mv --backup=numbered; mv file file2
+mv --backup=numbered file file2
 ```
 If file2 exists, it will be renamed file2.~1~. If file2.~1~ exists, it will be renamed file2.~2~, etc.
 
