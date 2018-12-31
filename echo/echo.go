@@ -3,8 +3,59 @@ package main
 import (
 	"fmt"
 	"github.com/guonaihong/flag"
+	"os"
 	"strconv"
 )
+
+func isxdigit(b byte) bool {
+	if b >= '0' && b <= '9' ||
+		b >= 'a' && b <= 'f' ||
+		b >= 'A' && b <= 'F' {
+		return true
+	}
+	return false
+}
+
+func isoctal(b byte) bool {
+	if b >= '0' && b <= '7' {
+		return true
+	}
+
+	return false
+}
+
+func isoctalStr(s string, max int) (i int, haveOctal bool) {
+	for i = 0; i < len(s); i++ {
+		if i > max {
+			return i - 1, haveOctal
+		}
+
+		if !isoctal(s[i]) {
+			return i - 1, haveOctal
+		}
+
+		haveOctal = true
+	}
+
+	return i, haveOctal
+}
+
+func isxdigitStr(s string, max int) (i int, haveHex bool) {
+
+	for i = 0; i < len(s); i++ {
+		if i > max {
+			return i - 1, haveHex
+		}
+
+		if !isxdigit(s[i]) {
+			return i - 1, haveHex
+		}
+
+		haveHex = true
+	}
+
+	return i, haveHex
+}
 
 func main() {
 	newLine := flag.Bool("n", false, "do not output the trailing newline")
@@ -24,6 +75,7 @@ func main() {
 	}()
 
 	if *enable {
+		printSlash := false
 		for _, s := range args {
 			for i := 0; i < len(s); i++ {
 				c := s[i]
@@ -57,28 +109,44 @@ func main() {
 						c = '\v'
 					case 'x':
 						if i+1 >= len(s) {
-							goto notAnEscape
-						}
-						i++
-						c0, err = strconv.ParseUint(s[i:], 16, 8)
-						if err != nil {
-							fmt.Print("\\")
-							goto notAnEscape
-						}
-						i = len(s)
-						c = byte(c0)
-					case '0':
-						if i+1 >= len(s) {
-							goto notAnEscape
-						}
-						i++
-						c0, err = strconv.ParseUint(s[i:], 8, 9)
-						if err != nil {
-							fmt.Print("\\")
+							printSlash = true
 							goto notAnEscape
 						}
 
-						i = len(s)
+						n, haveHex := isxdigitStr(s[i+1:], 2)
+						if !haveHex {
+							printSlash = true
+							goto notAnEscape
+						}
+
+						c0, err = strconv.ParseUint(s[i+1:i+1+n], 16, 32)
+						if err != nil {
+							printSlash = true
+							goto notAnEscape
+						}
+
+						i = i + 1 + n - 1
+						c = byte(c0)
+
+					case '0':
+						if i+1 >= len(s) {
+							printSlash = true
+							goto notAnEscape
+						}
+
+						n, haveOctal := isoctalStr(s[i+1:], 3)
+						if !haveOctal {
+							printSlash = true
+							goto notAnEscape
+						}
+
+						c0, err = strconv.ParseUint(s[i+1:i+1+n], 8, 32)
+						if err != nil {
+							printSlash = true
+							goto notAnEscape
+						}
+
+						i = i + 1 + n - 1
 						c = byte(c0)
 					default:
 						fmt.Print("\\")
@@ -87,7 +155,15 @@ func main() {
 				}
 
 			notAnEscape:
-				fmt.Printf("%c", c)
+				if printSlash {
+					fmt.Printf("\\")
+					printSlash = false
+				}
+
+				// fmt.Printf("%c") is not the same as the putchar output in c
+				// in go fmt.Printf("%c\n", 172) -->  ¬
+				// in c  putchar(172)            -->  ?
+				os.Stdout.Write([]byte{c})
 			}
 			fmt.Print(" ")
 		}
