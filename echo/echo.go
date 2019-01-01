@@ -26,12 +26,12 @@ func isoctal(b byte) bool {
 
 func isoctalStr(s string, max int) (i int, haveOctal bool) {
 	for i = 0; i < len(s); i++ {
-		if i > max {
-			return i - 1, haveOctal
+		if i >= max {
+			return i, haveOctal
 		}
 
 		if !isoctal(s[i]) {
-			return i - 1, haveOctal
+			return i, haveOctal
 		}
 
 		haveOctal = true
@@ -43,12 +43,12 @@ func isoctalStr(s string, max int) (i int, haveOctal bool) {
 func isxdigitStr(s string, max int) (i int, haveHex bool) {
 
 	for i = 0; i < len(s); i++ {
-		if i > max {
-			return i - 1, haveHex
+		if i >= max {
+			return i, haveHex
 		}
 
 		if !isxdigit(s[i]) {
-			return i - 1, haveHex
+			return i, haveHex
 		}
 
 		haveHex = true
