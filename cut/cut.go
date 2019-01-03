@@ -13,19 +13,19 @@ import (
 
 const max = 4096
 
-type fieldsCtrl struct {
+type filterCtrl struct {
 	filter     map[int]struct{}
 	start, end int
 }
 
-func die(fields string) {
-	fmt.Printf(`cut: invalid field value "%s"\n`, fields)
+func die(filter string) {
+	fmt.Printf(`cut: invalid field value "%s"\n`, filter)
 	os.Exit(1)
 }
 
-func (f *fieldsCtrl) init(fields string) {
+func (f *filterCtrl) init(filter string) {
 	f.filter = map[int]struct{}{}
-	s := strings.Split(fields, ",")
+	s := strings.Split(filter, ",")
 	var err error
 
 	start, end := 0, 0
@@ -43,9 +43,14 @@ func (f *fieldsCtrl) init(fields string) {
 			if len(startEnd[0]) > 0 {
 				start, err = strconv.Atoi(startEnd[0])
 				if err != nil {
-					die(fields)
+					die(filter)
 				}
-				if start < f.start {
+
+				if f.start == 0 && start > 0 {
+					f.start = start
+				}
+
+				if start > 0 && start < f.start {
 					f.start = start
 				}
 			}
@@ -53,7 +58,7 @@ func (f *fieldsCtrl) init(fields string) {
 			if len(startEnd[1]) > 0 {
 				end, err = strconv.Atoi(startEnd[1])
 				if err != nil {
-					die(fields)
+					die(filter)
 				}
 				if end > f.end {
 					f.end = end
@@ -71,7 +76,7 @@ func (f *fieldsCtrl) init(fields string) {
 	}
 }
 
-func (f *fieldsCtrl) check(index int) (ok bool) {
+func (f *filterCtrl) check(index int) (ok bool) {
 
 	if index >= f.start && index <= f.end {
 		return true
@@ -82,8 +87,8 @@ func (f *fieldsCtrl) check(index int) (ok bool) {
 }
 
 func main() {
-	//bytes0 := flag.String("b, bytes", "", "select only these bytes")
-	//characters := flag.String("c, characters", "", "select only these characters")
+	bytes0 := flag.String("b, bytes", "", "select only these bytes")
+	characters := flag.String("c, characters", "", "select only these characters")
 	delimiter := flag.String("d, delimiter", "\t", "use DELIM instead of TAB for field delimiter")
 	fields := flag.String("f, fields", "", "select only these fields;  also print any line that contains no delimiter character, unless the -s option is specified")
 	complement := flag.Bool("complement", false, "complement the set of selected bytes, characters or fields")
@@ -101,13 +106,28 @@ func main() {
 		lineDelim = byte(0)
 	}
 
-	fieldsFilter := fieldsCtrl{}
-	fieldsFilter.init(*fields)
+	if len(*bytes0) > 0 {
+		*characters = *bytes0
+	}
+
+	filterFilter := filterCtrl{}
+	if len(*fields) > 0 {
+		filterFilter.init(*fields)
+		*outputDelimiter = *delimiter
+	} else {
+		filterFilter.init(*characters)
+	}
 
 	cutCore := func(file *os.File) {
 		reader := bufio.NewReader(file)
 		buf := bytes.Buffer{}
 		output := [][]byte{}
+
+		defer func() {
+			if buf.Len() > 0 {
+				os.Stdout.Write(buf.Bytes())
+			}
+		}()
 
 		for {
 			line, err := reader.ReadBytes(lineDelim)
@@ -122,18 +142,25 @@ func main() {
 				}
 			}
 
+			have := false
 			for i, v := range ls {
-				checkOk := fieldsFilter.check(i + 1)
+				checkOk := filterFilter.check(i + 1)
 				if *complement {
 					checkOk = !checkOk
 				}
 
 				if checkOk {
+					have = true
 					output = append(output, v)
 				}
 			}
 
+			//todo
+
 			buf.Write(bytes.Join(output, []byte(*outputDelimiter)))
+			if have {
+				buf.WriteByte('\n')
+			}
 
 			output = output[:0]
 
@@ -142,6 +169,11 @@ func main() {
 				buf.Reset()
 			}
 		}
+	}
+
+	if len(args) == 0 {
+		cutCore(os.Stdin)
+		return
 	}
 
 	for _, v := range args {
