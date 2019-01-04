@@ -11,11 +11,13 @@ import (
 	"strings"
 )
 
-const max = 4096
+type paragraph struct {
+	start, end int
+}
 
 type filterCtrl struct {
-	filter     map[int]struct{}
-	start, end int
+	filter map[int]struct{}
+	p      []paragraph
 }
 
 func die(filter string) {
@@ -24,20 +26,24 @@ func die(filter string) {
 }
 
 func (f *filterCtrl) init(filter string) {
+	var err error
 	f.filter = map[int]struct{}{}
 	s := strings.Split(filter, ",")
-	var err error
 
 	start, end := 0, 0
+
 	for _, v := range s {
 		startEnd := strings.Split(v, "-")
+
 		if len(startEnd) == 2 {
+			p := paragraph{}
+
 			if len(startEnd[0]) == 0 {
-				f.start = 1
+				p.start = 1
 			}
 
 			if len(startEnd[1]) == 0 {
-				f.end = math.MaxInt64
+				p.end = math.MaxInt64
 			}
 
 			if len(startEnd[0]) > 0 {
@@ -46,12 +52,12 @@ func (f *filterCtrl) init(filter string) {
 					die(filter)
 				}
 
-				if f.start == 0 && start > 0 {
-					f.start = start
+				if p.start == 0 && start > 0 {
+					p.start = start
 				}
 
-				if start > 0 && start < f.start {
-					f.start = start
+				if start > 0 && start < p.start {
+					p.start = start
 				}
 			}
 
@@ -60,10 +66,12 @@ func (f *filterCtrl) init(filter string) {
 				if err != nil {
 					die(filter)
 				}
-				if end > f.end {
-					f.end = end
+				if end > p.end {
+					p.end = end
 				}
 			}
+
+			f.p = append(f.p, p)
 			continue
 		}
 
@@ -78,8 +86,10 @@ func (f *filterCtrl) init(filter string) {
 
 func (f *filterCtrl) check(index int) (ok bool) {
 
-	if index >= f.start && index <= f.end {
-		return true
+	for _, p := range f.p {
+		if index >= p.start && index <= p.end {
+			return true
+		}
 	}
 
 	_, ok = f.filter[index]
@@ -102,6 +112,34 @@ func main() {
 
 	lineDelim := byte('\n')
 
+	checkFiledsNum := func() {
+		filedsCount := 0
+
+		if len(*bytes0) > 0 {
+			filedsCount++
+		}
+
+		if len(*characters) > 0 {
+			filedsCount++
+		}
+
+		if len(*fields) > 0 {
+			filedsCount++
+		}
+
+		if filedsCount >= 2 {
+			fmt.Printf("only one type of list may be specified\n")
+			os.Exit(1)
+		}
+
+		if filedsCount == 0 {
+			fmt.Printf("you must specify a list of bytes, characters, or fields\n")
+			os.Exit(1)
+		}
+	}
+
+	checkFiledsNum()
+
 	if *zeroTerminated {
 		lineDelim = byte(0)
 	}
@@ -122,6 +160,7 @@ func main() {
 		reader := bufio.NewReader(file)
 		buf := bytes.Buffer{}
 		output := [][]byte{}
+		byteOutput := []byte{}
 
 		defer func() {
 			if buf.Len() > 0 {
@@ -135,15 +174,34 @@ func main() {
 				break
 			}
 
-			ls := bytes.Split(line, []byte(*delimiter))
-			if len(ls) == 1 {
-				if *onlyDelimited {
-					continue
+			have := false
+			if len(*fields) > 0 {
+				ls := bytes.Split(line, []byte(*delimiter))
+				if len(ls) == 1 {
+					if *onlyDelimited {
+						continue
+					}
 				}
+
+				for i, v := range ls {
+					checkOk := filterFilter.check(i + 1)
+					if *complement {
+						checkOk = !checkOk
+					}
+
+					if checkOk {
+						have = true
+						output = append(output, v)
+					}
+				}
+				//todo
+				buf.Write(bytes.Join(output, []byte(*outputDelimiter)))
+				output = output[:0]
+
+				goto write
 			}
 
-			have := false
-			for i, v := range ls {
+			for i, v := range line {
 				checkOk := filterFilter.check(i + 1)
 				if *complement {
 					checkOk = !checkOk
@@ -151,20 +209,21 @@ func main() {
 
 				if checkOk {
 					have = true
-					output = append(output, v)
+					byteOutput = append(byteOutput, v)
 				}
 			}
 
-			//todo
+			buf.Write(byteOutput)
+			byteOutput = byteOutput[:0]
 
-			buf.Write(bytes.Join(output, []byte(*outputDelimiter)))
+		write:
 			if have {
-				buf.WriteByte('\n')
+				if buf.Bytes()[buf.Len()-1] != lineDelim {
+					buf.WriteByte(lineDelim)
+				}
 			}
 
-			output = output[:0]
-
-			if buf.Len() >= max {
+			if buf.Len() >= 0 {
 				os.Stdout.Write(buf.Bytes())
 				buf.Reset()
 			}
