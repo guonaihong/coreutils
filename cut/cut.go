@@ -181,6 +181,8 @@ func main() {
 					if *onlyDelimited {
 						continue
 					}
+					buf.Write(line)
+					goto write
 				}
 
 				for i, v := range ls {
