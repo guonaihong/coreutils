@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/guonaihong/flag"
 	"os"
 )
@@ -16,17 +17,46 @@ func (t *tr) init(set1, set2 string) {
 
 	for i, j := 0, 0; i < len(set1); i++ {
 
-		if i+1 < len(set1) && i+2 < len(set2) && set1[i] == '-' {
+		if i-1 >= 0 && set1[i] == '-' && i+1 < len(set1) {
 			j0 := j
-			for i0 := set1[i]; i0 < set1[i+2]; i0++ {
-				t.tab[set1[i0]] = set2[j0]
+
+			b2 := set2[j]
+			loop := false
+
+			for b1 := set1[i-1]; b1 < set1[i+1]; b1++ {
+				if j0-1 >= 0 && set2[j0] == '-' {
+					b2 = byte(set2[j0-1])
+				}
+
+				if j0-1 >= 0 && set2[j0] == '-' && j0+1 < len(set2) {
+					loop = true
+					j0++
+				}
+
+				if loop {
+					if b2 < set2[j0] {
+						t.tab[b1] = b2
+						b2++
+						continue
+					}
+					loop = true
+					continue
+				}
+
+				fmt.Printf("b1 = %d, %c, j0 = %d, %d\n", b1, b1, j0, j0)
+				t.tab[b1] = set2[j0]
+
+				if j0 < len(set2) {
+					j0++
+				}
 			}
+			i++
 			continue
 		}
 
 		t.tab[set1[i]] = set2[j]
 
-		if j < len(set1) {
+		if j < len(set2) {
 			j++
 		}
 	}
