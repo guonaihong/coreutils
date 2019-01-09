@@ -15,49 +15,71 @@ func (t *tr) init(set1, set2 string) {
 
 	t.tab = map[byte]byte{}
 
-	for i, j := 0, 0; i < len(set1); i++ {
+	findRange := func(i int, set string) bool {
+		return i-1 >= 0 && set[i] == '-' && i+1 < len(set)
+	}
 
-		if i-1 >= 0 && set1[i] == '-' && i+1 < len(set1) {
-			j0 := j
+	loopSet1, loopSet2 := false, false
+	b1, b2 := byte(0), byte(0)
+	lastB1, lastB2 := byte(0), byte(0)
 
-			b2 := set2[j]
-			loop := false
+	haveStart := false
+	for i, j := 0, 0; i < len(set1); {
 
-			for b1 := set1[i-1]; b1 < set1[i+1]; b1++ {
-				if j0-1 >= 0 && set2[j0] == '-' {
-					b2 = byte(set2[j0-1])
-				}
-
-				if j0-1 >= 0 && set2[j0] == '-' && j0+1 < len(set2) {
-					loop = true
-					j0++
-				}
-
-				if loop {
-					if b2 < set2[j0] {
-						t.tab[b1] = b2
-						b2++
-						continue
-					}
-					loop = true
-					continue
-				}
-
-				fmt.Printf("b1 = %d, %c, j0 = %d, %d\n", b1, b1, j0, j0)
-				t.tab[b1] = set2[j0]
-
-				if j0 < len(set2) {
-					j0++
-				}
-			}
-			i++
-			continue
+		if !loopSet1 && i-1 >= 0 {
+			b1 = set1[i-1]
+			haveStart = true
 		}
 
-		t.tab[set1[i]] = set2[j]
+		if !loopSet2 && j-1 >= 0 {
+			if j < len(set2) {
+				b2 = set2[j-1]
+			}
+			haveStart = true
+		}
 
-		if j < len(set2) {
+		if findRange(i, set1) {
+			loopSet1 = true
+			i++ //skip -
+			lastB1 = set1[i]
+		}
+
+		if findRange(j, set2) {
+			loopSet2 = true
+			j++ //skip -
+			lastB2 = set2[j]
+		}
+
+		if !haveStart {
+			//goto next
+		}
+
+		fmt.Printf("b1:%c, b2:%c, lastB1:%c, lastB2:%c, %d\n", b1, b2, lastB1, lastB2, ',')
+		t.tab[byte(b1)] = byte(b2)
+
+		if loopSet1 {
+			if b1 <= lastB1 {
+				b1++
+			} else {
+				loopSet1 = false
+			}
+		}
+
+		if loopSet2 {
+			if b2 <= lastB2 {
+				b2++
+			} else {
+				loopSet2 = false
+			}
+		}
+
+		//next:
+		if !loopSet2 && j < len(set2) {
 			j++
+		}
+
+		if !loopSet1 {
+			i++
 		}
 	}
 }
