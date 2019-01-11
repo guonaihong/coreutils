@@ -14,6 +14,8 @@ type tr struct {
 	delete        bool
 }
 
+const unused = math.MaxUint16
+
 func (t *tr) init(set1, set2 string) {
 
 	t.tab = map[byte]byte{}
@@ -23,7 +25,7 @@ func (t *tr) init(set1, set2 string) {
 	}
 
 	loopSet1, loopSet2 := false, false
-	b1, b2 := byte(0), byte(0)
+	b1, b2 := byte(0), uint16(unused)
 	lastB1, lastB2 := byte(0), byte(0)
 
 	for i, j := 0, 0; i < len(set1); {
@@ -34,7 +36,7 @@ func (t *tr) init(set1, set2 string) {
 
 		if !loopSet2 {
 			if j < len(set2) {
-				b2 = set2[j]
+				b2 = uint16(set2[j])
 			}
 		}
 
@@ -50,8 +52,11 @@ func (t *tr) init(set1, set2 string) {
 			lastB2 = set2[j]
 		}
 
-		fmt.Printf("b1:%c, b2:%c, lastB1:%c, lastB2:%c, %d\n", b1, b2, lastB1, lastB2, ',')
-		t.tab[byte(b1)] = byte(b2)
+		t.tab[byte(b1)] = byte(b1)
+		if b2 != unused {
+			t.tab[byte(b1)] = byte(b2)
+		}
+		fmt.Printf("b1:%c, b2:(%c), lastB1:(%c), lastB2:(%c)\n", b1, t.tab[b1], lastB1, lastB2)
 
 		if loopSet1 {
 			if b1 < lastB1 {
@@ -62,7 +67,7 @@ func (t *tr) init(set1, set2 string) {
 		}
 
 		if loopSet2 {
-			if b2 < lastB2 {
+			if byte(b2) < lastB2 {
 				b2++
 			} else {
 				loopSet2 = false
@@ -83,7 +88,7 @@ func (t *tr) init(set1, set2 string) {
 func (t *tr) convert(b byte) byte {
 	b0, ok := t.tab[b]
 	if ok {
-		return b0
+		return byte(b0)
 	}
 
 	return b
@@ -94,18 +99,26 @@ func (t *tr) needDelete(b byte) bool {
 	return ok
 }
 
-func (t *tr) squeezeRepeats(b byte) bool {
+func (t *tr) squeezeRepeats(b byte) (byte, bool) {
+	outByte, ok := t.tab[b]
+	if !ok {
+		outByte = b
+		goto set
+	}
+
 	if t.squeezeRepeat == math.MaxInt64 {
-		t.squeezeRepeat = int64(b)
-		return false
+		t.squeezeRepeat = int64(outByte)
+		return outByte, false
 	}
 
-	if byte(t.squeezeRepeat) == b {
-		return true
+	if byte(t.squeezeRepeat) == outByte {
+		return 0, true
 	}
 
-	t.squeezeRepeat = int64(b)
-	return false
+	t.squeezeRepeat = int64(outByte)
+
+set:
+	return outByte, false
 }
 
 func main() {
@@ -132,13 +145,20 @@ func main() {
 		squeezeRepeat: math.MaxInt64,
 	}
 
-	//todo check -d args
+	if *delete && len(args) >= 2 {
+		if !*squeezeRepeats {
+			fmt.Printf("extra operand:%s\n", args[len(args)-1])
+			fmt.Println("Only one string may be given when ",
+				"deleting without squeezing repeats")
+			os.Exit(1)
+		}
+	}
+
 	tab.init(set1, set2)
 
 	stdin := bufio.NewReader(os.Stdin)
 
 	var oneByte [1]byte
-	var outByte [1]byte
 
 	for {
 
@@ -148,9 +168,12 @@ func main() {
 		}
 
 		if *squeezeRepeats {
-			if tab.squeezeRepeats(oneByte[0]) {
+			if outByte, ok := tab.squeezeRepeats(oneByte[0]); ok {
 				continue
+			} else {
+				oneByte[0] = outByte
 			}
+
 			goto output
 		}
 
@@ -161,7 +184,7 @@ func main() {
 			goto output
 		}
 
-		outByte[0] = tab.convert(oneByte[0])
+		oneByte[0] = tab.convert(oneByte[0])
 
 	output:
 		os.Stdout.Write(oneByte[:])
