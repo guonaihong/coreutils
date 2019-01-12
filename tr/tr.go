@@ -9,16 +9,15 @@ import (
 )
 
 type tr struct {
-	tab           map[byte]byte
+	set1Tab       map[byte]byte
+	set2Tab       map[byte]byte
 	squeezeRepeat int64
 	delete        bool
 }
 
 const unused = math.MaxUint16
 
-func (t *tr) init(set1, set2 string) {
-
-	t.tab = map[byte]byte{}
+func parseSet(setTab map[byte]byte, set1, set2 string) {
 
 	findRange := func(i int, set string) bool {
 		return i+1 < len(set) && i+2 < len(set) && set[i+1] == '-'
@@ -52,11 +51,11 @@ func (t *tr) init(set1, set2 string) {
 			lastB2 = set2[j]
 		}
 
-		t.tab[byte(b1)] = byte(b1)
+		setTab[byte(b1)] = byte(b1)
 		if b2 != unused {
-			t.tab[byte(b1)] = byte(b2)
+			setTab[byte(b1)] = byte(b2)
 		}
-		fmt.Printf("b1:%c, b2:(%c), lastB1:(%c), lastB2:(%c)\n", b1, t.tab[b1], lastB1, lastB2)
+		fmt.Printf("b1:%c, b2:(%c), lastB1:(%c), lastB2:(%c)\n", b1, setTab[b1], lastB1, lastB2)
 
 		if loopSet1 {
 			if b1 < lastB1 {
@@ -85,8 +84,15 @@ func (t *tr) init(set1, set2 string) {
 	}
 }
 
+func (t *tr) init(set1, set2 string) {
+	t.set1Tab = map[byte]byte{}
+	t.set2Tab = map[byte]byte{}
+	parseSet(t.set1Tab, set1, set2)
+	parseSet(t.set2Tab, set2, "")
+}
+
 func (t *tr) convert(b byte) byte {
-	b0, ok := t.tab[b]
+	b0, ok := t.set1Tab[b]
 	if ok {
 		return byte(b0)
 	}
@@ -95,17 +101,22 @@ func (t *tr) convert(b byte) byte {
 }
 
 func (t *tr) needDelete(b byte) bool {
-	_, ok := t.tab[b]
+	_, ok := t.set1Tab[b]
 	return ok
 }
 
 func (t *tr) squeezeRepeats(b byte) (byte, bool) {
-	outByte, ok := t.tab[b]
+	outByte, ok := t.set1Tab[b]
 	if !ok {
+		if outByte2, ok := t.set2Tab[b]; ok {
+			outByte = outByte2
+			goto next
+		}
 		outByte = b
 		goto set
 	}
 
+next:
 	if t.squeezeRepeat == math.MaxInt64 {
 		t.squeezeRepeat = int64(outByte)
 		return outByte, false
