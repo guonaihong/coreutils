@@ -26,6 +26,9 @@ echo 87654|tr '9876543210' '0-9'
 tr命令可以用来加密。ROT13是一个著名的加密算法。在ROT13算法中，字符会被移动13个位置，因此文本加密和解密都使用相同一个函数
 ```shell
 echo "tr came, tr saw, tr conquered."|tr 'a-zA-Z' 'n-za-mN-ZA-M'
+
+output:
+ge pnzr, ge fnj, ge pbadhrerq.
 ```
 还可以将制表符转换成单个空格:
 ```shell
@@ -71,15 +74,39 @@ echo "GNU is not UNIX. Recursive right ?"|tr -s ' '
 ```
 tr命令还可以用来删除多余的换行符:
 ```
+cat multi_blanks.txt 
+hello 
+
+
+
+
+
+world
+#
+
+
+
+
+我爱中国
 cat multi_blanks.txt|tr -s '\n'
-line1
-line2
-line3
-line4
+hello 
+world
+#
+我爱中国
 ```
 上面的例子展示了如何使用tr删除多余的'\n'字符。接下来让我们用一种巧妙的方式将数字列表进行相加
 ```
 seq 10|echo $[ `tr '\n' '+' ` 0]
+```
+
+-s 支持两个集合
+```
+echo -e "aaaaaaaaaaaaaaaaaaaaaaaaaa1 \n\n\nbbbbbbbb2" |tr -s "a-z" "0-9"
+```
+
+-s -d组合使用
+```
+echo -e "aaaaaaaaaaaaaaaaaaaaaaaaaa1 \n\n\nbbbbbbbb2" |tr -s -d "a-z" "0-9"
 ```
 ##### 字符类
 tr可以将不同的字符类作为集合使用，所支持的字符类如下所示。

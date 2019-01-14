@@ -6,6 +6,7 @@ import (
 	"github.com/guonaihong/flag"
 	"math"
 	"os"
+	"strconv"
 )
 
 type tr struct {
@@ -16,6 +17,84 @@ type tr struct {
 }
 
 const unused = math.MaxUint16
+
+func isoctal(b byte) bool {
+	if b >= '0' && b <= '7' {
+		return true
+	}
+
+	return false
+}
+
+func isoctalStr(s string, max int) (i int, haveOctal bool) {
+	for i = 0; i < len(s); i++ {
+		if i >= max {
+			return i, haveOctal
+		}
+
+		if !isoctal(s[i]) {
+			return i, haveOctal
+		}
+
+		haveOctal = true
+	}
+
+	return i, haveOctal
+}
+
+func unquote(s string, i *int) byte {
+	c := s[*i]
+	if c == '\\' && *i < len(s) {
+		(*i)++
+		if *i >= len(s) {
+			c = '\\'
+			goto notAnEscape
+		}
+
+		c = s[*i]
+		switch c {
+		case 'a':
+			c = '\a'
+		case 'b':
+			c = '\b'
+		case 'f':
+			c = '\f'
+		case 'n':
+			c = '\n'
+		case 'r':
+			c = '\r'
+		case 't':
+			c = '\t'
+		case 'v':
+			c = '\v'
+
+		case '0', '1', '2', '3', '4', '5', '6', '7':
+			if *i+1 >= len(s) {
+				goto notAnEscape
+			}
+
+			n, haveOctal := isoctalStr(s[*i+1:], 3)
+			if !haveOctal {
+				goto notAnEscape
+			}
+
+			c0, err := strconv.ParseUint(s[*i+1:*i+1+n], 8, 32)
+			if err != nil {
+				goto notAnEscape
+			}
+
+			*i = *i + 1 + n - 1
+			c = byte(c0)
+		case '\\':
+		default:
+			c = '\\'
+		}
+
+	}
+
+notAnEscape:
+	return c
+}
 
 func parseSet(setTab map[byte]byte, set1, set2 string) {
 
@@ -30,32 +109,34 @@ func parseSet(setTab map[byte]byte, set1, set2 string) {
 	for i, j := 0, 0; i < len(set1); {
 
 		if !loopSet1 {
-			b1 = set1[i]
+			//b1 = set1[i]
+			b1 = unquote(set1, &i)
 		}
 
 		if !loopSet2 {
 			if j < len(set2) {
-				b2 = uint16(set2[j])
+				b2 = uint16(unquote(set2, &j))
+				//b2 = uint16(set2[j])
 			}
 		}
 
 		if findRange(i, set1) {
 			loopSet1 = true
 			i += 2 //skip start-
-			lastB1 = set1[i]
+			lastB1 = unquote(set1, &i)
 		}
 
 		if findRange(j, set2) {
 			loopSet2 = true
 			j += 2 //skip start-
-			lastB2 = set2[j]
+			lastB2 = unquote(set2, &j)
 		}
 
 		setTab[byte(b1)] = byte(b1)
 		if b2 != unused {
 			setTab[byte(b1)] = byte(b2)
 		}
-		fmt.Printf("b1:%c, b2:(%c), lastB1:(%c), lastB2:(%c)\n", b1, setTab[b1], lastB1, lastB2)
+		//fmt.Printf("b1:%c, b2:(%c), lastB1:(%c), lastB2:(%c)\n", b1, setTab[b1], lastB1, lastB2)
 
 		if loopSet1 {
 			if b1 < lastB1 {
@@ -126,9 +207,9 @@ next:
 		return 0, true
 	}
 
+set:
 	t.squeezeRepeat = int64(outByte)
 
-set:
 	return outByte, false
 }
 
