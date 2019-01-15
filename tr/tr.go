@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/guonaihong/flag"
 	"math"
@@ -10,10 +11,13 @@ import (
 )
 
 type tr struct {
-	set1Tab       map[byte]byte
-	set2Tab       map[byte]byte
-	squeezeRepeat int64
-	delete        bool
+	set1Tab        map[byte]byte
+	set2Tab        map[byte]byte
+	set1Complement map[byte]byte
+	squeezeRepeat  int64
+	delete         bool
+	truncateSet1   bool
+	complement     bool
 }
 
 const unused = math.MaxUint16
@@ -96,7 +100,7 @@ notAnEscape:
 	return c
 }
 
-func parseSet(setTab map[byte]byte, set1, set2 string) {
+func parseSet(setTab map[byte]byte, set1, set2 string, truncateSet1 bool, parseRange1 bool) {
 
 	findRange := func(i int, set string) bool {
 		return i+1 < len(set) && i+2 < len(set) && set[i+1] == '-'
@@ -105,11 +109,15 @@ func parseSet(setTab map[byte]byte, set1, set2 string) {
 	loopSet1, loopSet2 := false, false
 	b1, b2 := byte(0), uint16(unused)
 	lastB1, lastB2 := byte(0), byte(0)
-
 	for i, j := 0, 0; i < len(set1); {
+
+		if truncateSet1 && j >= len(set2) {
+			return
+		}
 
 		if !loopSet1 {
 			//b1 = set1[i]
+
 			b1 = unquote(set1, &i)
 		}
 
@@ -120,7 +128,7 @@ func parseSet(setTab map[byte]byte, set1, set2 string) {
 			}
 		}
 
-		if findRange(i, set1) {
+		if parseRange1 && findRange(i, set1) {
 			loopSet1 = true
 			i += 2 //skip start-
 			lastB1 = unquote(set1, &i)
@@ -136,7 +144,11 @@ func parseSet(setTab map[byte]byte, set1, set2 string) {
 		if b2 != unused {
 			setTab[byte(b1)] = byte(b2)
 		}
-		//fmt.Printf("b1:%c, b2:(%c), lastB1:(%c), lastB2:(%c)\n", b1, setTab[b1], lastB1, lastB2)
+
+		/*
+			fmt.Printf("b1:%c, b2:(%c), lastB1:(%c), lastB2:(%c), \n",
+				b1, setTab[b1], lastB1, lastB2)
+		*/
 
 		if loopSet1 {
 			if b1 < lastB1 {
@@ -154,22 +166,33 @@ func parseSet(setTab map[byte]byte, set1, set2 string) {
 			}
 		}
 
-		//next:
+		if !loopSet1 {
+			i++
+		}
 		if !loopSet2 && j < len(set2) {
 			j++
 		}
 
-		if !loopSet1 {
-			i++
-		}
 	}
 }
 
 func (t *tr) init(set1, set2 string) {
 	t.set1Tab = map[byte]byte{}
 	t.set2Tab = map[byte]byte{}
-	parseSet(t.set1Tab, set1, set2)
-	parseSet(t.set2Tab, set2, "")
+	t.set1Complement = map[byte]byte{}
+	parseSet(t.set1Tab, set1, set2, t.truncateSet1, true)
+	parseSet(t.set2Tab, set2, "", t.truncateSet1, true)
+
+	if t.complement {
+		buf := bytes.Buffer{}
+		for i := 0; i < 255; i++ {
+			if _, ok := t.set1Tab[byte(i)]; ok {
+				continue
+			}
+			buf.WriteByte(byte(i))
+		}
+		parseSet(t.set1Complement, buf.String(), set2, t.truncateSet1, false)
+	}
 }
 
 func (t *tr) convert(b byte) byte {
@@ -213,11 +236,22 @@ set:
 	return outByte, false
 }
 
+func (t *tr) getComplement(b byte) byte {
+	if _, ok := t.set1Tab[b]; ok {
+		return b
+	}
+
+	if outByte, ok := t.set1Complement[b]; ok {
+		return outByte
+	}
+	panic(fmt.Sprintf("unkown error:%c", b))
+}
+
 func main() {
-	//complement := flag.Bool("c, C, complement", false, "use the complement of SET1")
+	complement := flag.Bool("c, C, complement", false, "use the complement of SET1")
 	delete := flag.Bool("d, delete", false, "delete characters in SET1, do not translate")
 	squeezeRepeats := flag.Bool("s, squeeze-repeats", false, "replace each sequence of a repeated character that is listed in the last specified SET, with a single occurrence of that character")
-	//truncateSet1 := flag.Bool("t, truncate-set1", false, "first truncate SET1 to length of SET2")
+	truncateSet1 := flag.Bool("t, truncate-set1", false, "first truncate SET1 to length of SET2")
 
 	flag.Parse()
 
@@ -234,7 +268,9 @@ func main() {
 
 	tab := tr{
 		delete:        *delete,
+		truncateSet1:  *truncateSet1,
 		squeezeRepeat: math.MaxInt64,
+		complement:    *complement,
 	}
 
 	if *delete && len(args) >= 2 {
@@ -259,6 +295,19 @@ func main() {
 			break
 		}
 
+		if *delete {
+			if tab.needDelete(oneByte[0]) {
+				continue
+			}
+			goto output
+		}
+
+		if *complement {
+			outByte := tab.getComplement(oneByte[0])
+			oneByte[0] = outByte
+			goto output
+		}
+
 		if *squeezeRepeats {
 			if outByte, ok := tab.squeezeRepeats(oneByte[0]); ok {
 				continue
@@ -266,13 +315,6 @@ func main() {
 				oneByte[0] = outByte
 			}
 
-			goto output
-		}
-
-		if *delete {
-			if tab.needDelete(oneByte[0]) {
-				continue
-			}
 			goto output
 		}
 

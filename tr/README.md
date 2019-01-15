@@ -108,6 +108,16 @@ echo -e "aaaaaaaaaaaaaaaaaaaaaaaaaa1 \n\n\nbbbbbbbb2" |tr -s "a-z" "0-9"
 ```
 echo -e "aaaaaaaaaaaaaaaaaaaaaaaaaa1 \n\n\nbbbbbbbb2" |tr -s -d "a-z" "0-9"
 ```
+```
+echo "`echo -n {0..9}``echo -n {a..z}`" |tr -d " " |tr -d -s "0-9" "a-c"
+```
+
+-c使用
+```
+echo -n "0 1 2 3 4 5 6 7 8 9 a b c d e f g h i j k l m n o p q r s t u v w x y z"|tr -d " " |tr -c "0-9" "a-c"
+output:
+0123456789cccccccccccccccccccccccccc
+```
 ##### 字符类
 tr可以将不同的字符类作为集合使用，所支持的字符类如下所示。
 * alnum: 字母和数字
