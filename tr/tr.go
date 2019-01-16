@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"unicode"
 )
 
 type tr struct {
@@ -18,9 +19,52 @@ type tr struct {
 	delete         bool
 	truncateSet1   bool
 	complement     bool
+	class          setClass
 }
 
 const unused = math.MaxUint16
+
+type setClass struct {
+	class map[string]func(r rune) bool
+}
+
+func (s *setClass) init() {
+
+	isAlpha := func(r rune) bool {
+		return unicode.IsLower(r) || unicode.IsUpper(r)
+	}
+
+	isAlnum := func(r rune) bool {
+		return isAlpha(r) || unicode.IsDigit(r)
+	}
+
+	isXdigit := func(r rune) bool {
+		return unicode.IsDigit(r) || r >= 'a' && r <= 'f' || r >= 'A' && r <= 'F'
+	}
+
+	s.class = map[string]func(r rune) bool{
+		"alnum":  isAlnum,
+		"alpha":  isAlpha,
+		"cntrl":  unicode.IsControl,
+		"digit":  unicode.IsDigit,
+		"graph":  unicode.IsGraphic,
+		"lower":  unicode.IsLower,
+		"print":  unicode.IsPrint,
+		"punct":  unicode.IsPunct,
+		"space":  unicode.IsSpace,
+		"upper":  unicode.IsUpper,
+		"xdigit": isXdigit,
+	}
+}
+
+func (s *setClass) get(className string) func(r rune) bool {
+	f, ok := s.class[className]
+	if !ok {
+		return nil
+	}
+
+	return f
+}
 
 func isoctal(b byte) bool {
 	if b >= '0' && b <= '7' {
@@ -177,6 +221,8 @@ func parseSet(setTab map[byte]byte, set1, set2 string, truncateSet1 bool, parseR
 }
 
 func (t *tr) init(set1, set2 string) {
+	t.class.init()
+
 	t.set1Tab = map[byte]byte{}
 	t.set2Tab = map[byte]byte{}
 	t.set1Complement = map[byte]byte{}
@@ -193,6 +239,7 @@ func (t *tr) init(set1, set2 string) {
 		}
 		parseSet(t.set1Complement, buf.String(), set2, t.truncateSet1, false)
 	}
+
 }
 
 func (t *tr) convert(b byte) byte {
