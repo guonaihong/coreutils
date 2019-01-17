@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"unicode"
 )
 
@@ -25,7 +26,7 @@ type tr struct {
 const unused = math.MaxUint16
 
 type setClass struct {
-	class map[string]func(r rune) bool
+	tab map[string]bytes.Buffer
 }
 
 func (s *setClass) init() {
@@ -42,7 +43,7 @@ func (s *setClass) init() {
 		return unicode.IsDigit(r) || r >= 'a' && r <= 'f' || r >= 'A' && r <= 'F'
 	}
 
-	s.class = map[string]func(r rune) bool{
+	classFunc := map[string]func(r rune) bool{
 		"alnum":  isAlnum,
 		"alpha":  isAlpha,
 		"cntrl":  unicode.IsControl,
@@ -55,15 +56,42 @@ func (s *setClass) init() {
 		"upper":  unicode.IsUpper,
 		"xdigit": isXdigit,
 	}
+
+	s.tab = map[string]bytes.Buffer{}
+
+	for i := 0; i < 255; i++ {
+		for className, f := range classFunc {
+			for f(rune(i)) {
+				oldSet, ok := s.tab[className]
+				if ok {
+					oldSet.WriteByte(byte(i))
+				} else {
+					s.tab[className] = bytes.Buffer{}
+				}
+				i++
+			}
+		}
+	}
 }
 
-func (s *setClass) get(className string) func(r rune) bool {
-	f, ok := s.class[className]
-	if !ok {
-		return nil
+func (s *setClass) get(set string) string {
+	for {
+		leftSb := strings.Index(set, "[:")
+		if leftSb == -1 {
+			return set
+		}
+
+		rightSb := strings.Index(set, ":]")
+		if rightSb == -1 {
+			return set
+		}
+
+		className := set[leftSb+2 : rightSb]
+		if _, ok := s.tab[className]; !ok {
+		}
 	}
 
-	return f
+	return set
 }
 
 func isoctal(b byte) bool {
