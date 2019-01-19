@@ -26,7 +26,7 @@ type tr struct {
 const unused = math.MaxUint16
 
 type setClass struct {
-	tab map[string]bytes.Buffer
+	tab map[string]*bytes.Buffer
 }
 
 func (s *setClass) init() {
@@ -44,34 +44,48 @@ func (s *setClass) init() {
 	}
 
 	classFunc := map[string]func(r rune) bool{
-		"alnum":  isAlnum,
-		"alpha":  isAlpha,
-		"cntrl":  unicode.IsControl,
-		"digit":  unicode.IsDigit,
-		"graph":  unicode.IsGraphic,
-		"lower":  unicode.IsLower,
-		"print":  unicode.IsPrint,
-		"punct":  unicode.IsPunct,
-		"space":  unicode.IsSpace,
-		"upper":  unicode.IsUpper,
+		"alnum": isAlnum,
+		"alpha": isAlpha,
+		"cntrl": unicode.IsControl,
+		//"digit":  unicode.IsDigit,
+		"graph": unicode.IsGraphic,
+		//"lower":  unicode.IsLower,
+		"print": unicode.IsPrint,
+		"punct": unicode.IsPunct,
+		"space": unicode.IsSpace,
+		//"upper":  unicode.IsUpper,
 		"xdigit": isXdigit,
 	}
 
-	s.tab = map[string]bytes.Buffer{}
+	s.tab = map[string]*bytes.Buffer{}
 
-	for i := 0; i < 255; i++ {
-		for className, f := range classFunc {
-			for f(rune(i)) {
-				oldSet, ok := s.tab[className]
-				if ok {
-					oldSet.WriteByte(byte(i))
-				} else {
-					s.tab[className] = bytes.Buffer{}
-				}
-				i++
+	tab2 := map[string]*bytes.Buffer{
+		"digit": bytes.NewBufferString("0123456789"),
+		"lower": bytes.NewBufferString("abcdefghijklmnopqrstuvwxyz"),
+		"upper": bytes.NewBufferString("ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+	}
+
+	for className, f := range classFunc {
+
+		for j := 0; j < 255; j++ {
+			if !f(rune(j)) {
+				continue
 			}
+
+			oldSet, ok := s.tab[className]
+			if !ok {
+				oldSet = &bytes.Buffer{}
+				s.tab[className] = oldSet
+			}
+			oldSet.WriteByte(byte(j))
 		}
 	}
+
+	for k, v := range tab2 {
+		s.tab[k] = v
+	}
+
+	//fmt.Printf("#tab :%s\n", s.tab)
 }
 
 func (s *setClass) get(set string) string {
@@ -87,7 +101,12 @@ func (s *setClass) get(set string) string {
 		}
 
 		className := set[leftSb+2 : rightSb]
-		if _, ok := s.tab[className]; !ok {
+
+		if newSet, ok := s.tab[className]; !ok {
+			fmt.Printf("invalid character class:%s\n", className)
+			os.Exit(1)
+		} else {
+			set = strings.Replace(set, set[leftSb:rightSb+2], newSet.String(), 1)
 		}
 	}
 
@@ -251,6 +270,11 @@ func parseSet(setTab map[byte]byte, set1, set2 string, truncateSet1 bool, parseR
 func (t *tr) init(set1, set2 string) {
 	t.class.init()
 
+	t.class.get(set1)
+	//fmt.Printf("set1:%s\n", t.class.get(set1))
+	//fmt.Printf("set2:%s\n", t.class.get(set2))
+	set1 = t.class.get(set1)
+	set2 = t.class.get(set2)
 	t.set1Tab = map[byte]byte{}
 	t.set2Tab = map[byte]byte{}
 	t.set1Complement = map[byte]byte{}
