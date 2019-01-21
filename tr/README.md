@@ -1,3 +1,13 @@
+# tr
+
+#### 简介
+tr 使用gnu的命令行选项
+
+#### install
+```
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/tr
+```
+
 #### Example
 （来自linux shell cookbook）  
 tr只能通过stdin接收输入。调用格式如下：
