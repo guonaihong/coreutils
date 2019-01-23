@@ -98,3 +98,19 @@ sort -z data.txt|xargs -0
 sort -bd unsorted.txt
 其中，选项-b用于忽略文件中的前导空白行，选项-d用于指明以字典序进行排序。
 ```
+
+````
+cat data.txt
+hello world
+abcde
+12o2o2o2
+44444
+11111
+33333
+1
+1G
+2G
+3G
+
+cat data.txt|sort -n
+````

@@ -8,10 +8,31 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 )
 
 type sortLine struct {
-	line []byte
+	line      []byte
+	number    int
+	numberErr error
+	setNumber bool
+}
+
+func (sl *sortLine) parseNumber() {
+	if !sl.setNumber && sl.numberErr == nil {
+		defer func() { sl.setNumber = true }()
+
+		line := sl.line
+		sl.number, sl.numberErr = strconv.Atoi(string(line[:len(line)-1]))
+		//fmt.Printf("%d--->%s\n", sl.number, sl.numberErr)
+		if sl.numberErr != nil {
+			return
+		}
+	}
+}
+
+func (sl *sortLine) isNumber() bool {
+	return sl.setNumber && sl.numberErr == nil
 }
 
 func main() {
@@ -22,7 +43,7 @@ func main() {
 	flag.String("i, ignore-nonprinting", "", "consider only printable characters")
 	flag.String("M, month-sort", "", "compare (unknown) < 'JAN' < ... < 'DEC'")
 	flag.String("h, human-numeric-sort", "", "compare human readable numbers (e.g., 2K 1G)")
-	flag.String("n, numeric-sort", "", "compare according to string numerical value")
+	numericSort := flag.Bool("n, numeric-sort", false, "compare according to string numerical value")
 	flag.String("R, random-sort", "", "shuffle, but group identical keys.  See shuf(1)")
 	flag.String("random-source", "", "get random bytes from FILE")
 	reverse := flag.Bool("r, reverse", false, "reverse the result of comparisons")
@@ -45,10 +66,31 @@ func main() {
 	flag.String("u, unique", "", "with -c, check for strict ordering; without -c, output only the first of an equal run")
 	flag.String("z, zero-terminated", "", "line delimiter is NUL, not newline")
 
+	flag.Parse()
 	args := flag.Args()
 
 	defaultCmp := func(allLine []sortLine, i, j int) bool {
-		return bytes.Compare(allLine[i].line, allLine[j].line) < 0
+		cmp := func(allLine []sortLine, i, j int) bool {
+
+			if *numericSort {
+				//fmt.Printf("i = %d, %d\n", i, len(allLine))
+				allLine[i].parseNumber()
+				allLine[j].parseNumber()
+
+				if allLine[i].isNumber() && allLine[j].isNumber() {
+					return allLine[i].number < allLine[j].number
+				}
+
+			}
+
+			return bytes.Compare(allLine[i].line, allLine[j].line) < 0
+		}
+
+		if *reverse {
+			return !cmp(allLine, i, j)
+		}
+
+		return cmp(allLine, i, j)
 	}
 
 	sort := func(r io.Reader) {
@@ -62,19 +104,12 @@ func main() {
 				break
 			}
 
+			l = append(l, '\n')
+
 			allLine = append(allLine, sortLine{line: append([]byte{}, l...)})
-			last := allLine[len(allLine)-1]
-			last.line = append(last.line, '\n')
-			allLine[len(allLine)-1] = last
 		}
 
-		sort.SliceStable(allLine, func(i, j int) bool {
-			if *reverse {
-				return !defaultCmp(allLine, i, j)
-			}
-
-			return defaultCmp(allLine, i, j)
-		})
+		sort.Slice(allLine, func(i, j int) bool { return defaultCmp(allLine, i, j) })
 
 		for _, v := range allLine {
 			os.Stdout.Write(v.line)
