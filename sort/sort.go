@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/guonaihong/flag"
 	"io"
@@ -18,12 +19,46 @@ type sortLine struct {
 	setNumber bool
 }
 
+func isoctal(b byte) bool {
+	if b >= '0' && b <= '7' {
+		return true
+	}
+
+	return false
+}
+
+var notNumber = errors.New("not number")
+
+func isOctalStr(s string, max int) (i int, haveOctal bool) {
+	for i = 0; i < len(s); i++ {
+		if i >= max {
+			return i, haveOctal
+		}
+
+		if !isoctal(s[i]) {
+			return i, haveOctal
+		}
+
+		haveOctal = true
+	}
+
+	return i, haveOctal
+}
+
 func (sl *sortLine) parseNumber() {
 	if !sl.setNumber && sl.numberErr == nil {
 		defer func() { sl.setNumber = true }()
 
 		line := sl.line
-		sl.number, sl.numberErr = strconv.Atoi(string(line[:len(line)-1]))
+		nstr := string(line[:len(line)-1])
+
+		n, haveOctal := isOctalStr(nstr, len(nstr))
+		if !haveOctal {
+			sl.numberErr = notNumber
+			return
+		}
+
+		sl.number, sl.numberErr = strconv.Atoi(nstr[:n])
 		//fmt.Printf("%d--->%s\n", sl.number, sl.numberErr)
 		if sl.numberErr != nil {
 			return
@@ -63,7 +98,7 @@ func main() {
 	flag.String("t, field-separator=SEP", "", "use SEP instead of non-blank to blank transition")
 	flag.String("T, temporary-directory=DIR", "", "use DIR for temporaries, not $TMPDIR or /tmp; multiple options specify multiple directories")
 	flag.String("parallel", "", "change the number of sorts run concurrently to N")
-	flag.String("u, unique", "", "with -c, check for strict ordering; without -c, output only the first of an equal run")
+	unique := flag.Bool("u, unique", false, "with -c, check for strict ordering; without -c, output only the first of an equal run")
 	flag.String("z, zero-terminated", "", "line delimiter is NUL, not newline")
 
 	flag.Parse()
@@ -98,6 +133,8 @@ func main() {
 
 		var allLine []sortLine
 
+		uniqueMap := map[string]struct{}{}
+
 		for {
 			l, _, e := br.ReadLine()
 			if e == io.EOF {
@@ -105,6 +142,14 @@ func main() {
 			}
 
 			l = append(l, '\n')
+
+			if *unique {
+				key := string(l)
+				if _, ok := uniqueMap[key]; ok {
+					continue
+				}
+				uniqueMap[key] = struct{}{}
+			}
 
 			allLine = append(allLine, sortLine{line: append([]byte{}, l...)})
 		}
