@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/guonaihong/flag"
 	"io"
@@ -15,7 +14,6 @@ import (
 type sortLine struct {
 	line      []byte
 	number    int
-	numberErr error
 	setNumber bool
 }
 
@@ -26,8 +24,6 @@ func isoctal(b byte) bool {
 
 	return false
 }
-
-var notNumber = errors.New("not number")
 
 func isOctalStr(s string, max int) (i int, haveOctal bool) {
 	for i = 0; i < len(s); i++ {
@@ -46,7 +42,7 @@ func isOctalStr(s string, max int) (i int, haveOctal bool) {
 }
 
 func (sl *sortLine) parseNumber() {
-	if !sl.setNumber && sl.numberErr == nil {
+	if !sl.setNumber {
 		defer func() { sl.setNumber = true }()
 
 		line := sl.line
@@ -54,20 +50,16 @@ func (sl *sortLine) parseNumber() {
 
 		n, haveOctal := isOctalStr(nstr, len(nstr))
 		if !haveOctal {
-			sl.numberErr = notNumber
 			return
 		}
 
-		sl.number, sl.numberErr = strconv.Atoi(nstr[:n])
+		sl.number, _ = strconv.Atoi(nstr[:n])
 		//fmt.Printf("%d--->%s\n", sl.number, sl.numberErr)
-		if sl.numberErr != nil {
-			return
-		}
 	}
 }
 
 func (sl *sortLine) isNumber() bool {
-	return sl.setNumber && sl.numberErr == nil
+	return sl.setNumber
 }
 
 func main() {
@@ -113,7 +105,9 @@ func main() {
 				allLine[j].parseNumber()
 
 				if allLine[i].isNumber() && allLine[j].isNumber() {
-					return allLine[i].number < allLine[j].number
+					if allLine[i].number != allLine[j].number {
+						return allLine[i].number < allLine[j].number
+					}
 				}
 
 			}
