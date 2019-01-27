@@ -65,7 +65,7 @@ func (sl *sortLine) isNumber() bool {
 func main() {
 	flag.String("b, ignore-leading-blanks", "", "ignore leading blanks")
 	flag.String("d, dictionary-order", "", "consider only blanks and alphanumeric characters")
-	flag.String("f, ignore-case", "", "fold lower case to upper case characters")
+	ignoreCase := flag.Bool("f, ignore-case", false, "fold lower case to upper case characters")
 	flag.String("g, general-numeric-sort", "", "compare according to general numerical value")
 	flag.String("i, ignore-nonprinting", "", "consider only printable characters")
 	flag.String("M, month-sort", "", "compare (unknown) < 'JAN' < ... < 'DEC'")
@@ -98,6 +98,12 @@ func main() {
 
 	defaultCmp := func(allLine []sortLine, i, j int) bool {
 		cmp := func(allLine []sortLine, i, j int) bool {
+			aLine, bLine := allLine[i].line, allLine[j].line
+
+			if *ignoreCase {
+				aLine = bytes.ToUpper(aLine)
+				bLine = bytes.ToUpper(bLine)
+			}
 
 			if *numericSort {
 				//fmt.Printf("i = %d, %d\n", i, len(allLine))
@@ -112,7 +118,7 @@ func main() {
 
 			}
 
-			return bytes.Compare(allLine[i].line, allLine[j].line) < 0
+			return bytes.Compare(aLine, bLine) < 0
 		}
 
 		if *reverse {
