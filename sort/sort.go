@@ -84,7 +84,7 @@ func main() {
 	flag.String("files0-from=F", "", "read input from the files specified by NUL-terminated names in file F; If F is - then read names from standard input")
 	flag.String("k, key=KEYDEF", "", "sort via a key; KEYDEF gives location and type")
 	flag.String("m, merge", "", "merge already sorted files; do not sort")
-	flag.String("o, output", "", "write result to FILE instead of standard output")
+	output := flag.String("o, output", "", "write result to FILE instead of standard output")
 	flag.String("s, stable", "", "stabilize sort by disabling last-resort comparison")
 	flag.String("S, buffer-size", "", "use SIZE for main memory buffer")
 	flag.String("t, field-separator=SEP", "", "use SEP instead of non-blank to blank transition")
@@ -122,7 +122,7 @@ func main() {
 		return cmp(allLine, i, j)
 	}
 
-	sort := func(r io.Reader) {
+	sort := func(r io.Reader, w io.Writer) {
 		br := bufio.NewReader(r)
 
 		var allLine []sortLine
@@ -151,12 +151,23 @@ func main() {
 		sort.Slice(allLine, func(i, j int) bool { return defaultCmp(allLine, i, j) })
 
 		for _, v := range allLine {
-			os.Stdout.Write(v.line)
+			w.Write(v.line)
 		}
 	}
 
+	w := os.Stdout
+	if len(*output) > 0 {
+		fd, err := os.Create(*output)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		w = fd
+		defer fd.Close()
+	}
+
 	if len(args) == 0 {
-		sort(os.Stdin)
+		sort(os.Stdin, w)
 		return
 	}
 
@@ -169,6 +180,6 @@ func main() {
 
 		defer fd.Close()
 
-		sort(fd)
+		sort(fd, w)
 	}
 }
