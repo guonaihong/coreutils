@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 type sortLine struct {
@@ -47,8 +48,17 @@ const emptyStr = "\t\n\v\f\r \x85\xA0"
 
 var lineDelim byte = '\n'
 
-func parseMonth(s []byte) Month {
-	m := string(bytes.ToUpper(bytes.TrimLeft(s, emptyStr)))
+func delLineBreaks(line []byte) []byte {
+
+	if len(line) > 0 && line[len(line)-1] == '\n' {
+		return line[:len(line)-1]
+	}
+
+	return line
+}
+
+func parseMonth(b []byte) Month {
+	m := string(bytes.ToUpper(bytes.TrimLeft(b, emptyStr)))
 	if len(m) >= 3 {
 		m = m[:3]
 	}
@@ -83,7 +93,48 @@ func parseMonth(s []byte) Month {
 	return Unknown
 }
 
+type size int
+
+const (
+	KB size = 1024
+	MB      = KB * 1024
+	GB      = MB * 1024
+	TB      = GB * 1024
+	PB      = TB * 1024
+)
+
+func parseHumanNumberic(b []byte) int {
+	s := string(bytes.TrimLeft(b, emptyStr))
+
+	i, haveOctal := isOctalStr(s, len(s))
+	if !haveOctal {
+		return 0
+	}
+
+	n, _ := strconv.Atoi(s[:i])
+
+	suffix := strings.ToLower(s[i:])
+	switch suffix {
+	case "kb":
+		return n * int(KB)
+	case "mb":
+		return n * int(MB)
+	case "gb":
+		return n * int(GB)
+	case "tb":
+		return n * int(TB)
+	case "pb":
+		return n * int(PB)
+	default:
+		return n
+	}
+
+	return n
+
+}
+
 func isOctalStr(s string, max int) (i int, haveOctal bool) {
+
 	for i = 0; i < len(s); i++ {
 		if i >= max {
 			return i, haveOctal
@@ -162,6 +213,9 @@ func main() {
 		cmp := func(allLine []sortLine, i, j int) bool {
 			aLine, bLine := allLine[i].line, allLine[j].line
 
+			aLine = delLineBreaks(aLine)
+			bLine = delLineBreaks(bLine)
+
 			if *ignoreCase {
 				aLine = bytes.ToUpper(aLine)
 				bLine = bytes.ToUpper(bLine)
@@ -172,13 +226,17 @@ func main() {
 				bLine = bytes.TrimLeft(bLine, emptyStr)
 			}
 
+			diff := 0
 			if *humanNumericSort {
+				diff = int(parseHumanNumberic(aLine)) - int(parseHumanNumberic(bLine))
+				if diff != 0 {
+					return diff < 0
+				}
 			}
 
 			if *dictionaryOrder {
 			}
 
-			diff := 0
 			if *monthSort {
 				diff = int(parseMonth(aLine)) - int(parseMonth(bLine))
 				if diff != 0 {
@@ -211,8 +269,7 @@ func main() {
 
 	sort := func(r io.Reader, w io.Writer) {
 		br := bufio.NewReader(r)
-
-		var allLine []sortLine
+		allLine := []sortLine{}
 		lineMap := map[int]struct{}{}
 		uniqueMap := map[string]struct{}{}
 
@@ -221,8 +278,6 @@ func main() {
 			if e == io.EOF {
 				break
 			}
-
-			l = append(l, '\n')
 
 			if *randomSort {
 				lineMap[count] = struct{}{}
