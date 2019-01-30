@@ -35,12 +35,11 @@ func main() {
 
 		isSpace := 0
 		for count := 1; ; count++ {
-			l, _, c := br.ReadLine()
-			if c == io.EOF {
+			l, e := br.ReadBytes('\n')
+			if e != nil && len(l) == 0 {
 				break
 			}
 
-			l = append(l, '\n')
 			if *squeezeBlank {
 				if len(bytes.TrimSpace(l)) == 0 {
 					isSpace++
@@ -70,6 +69,9 @@ func main() {
 			}
 
 			os.Stdout.Write(l)
+			if e != nil {
+				break
+			}
 		}
 	}
 
