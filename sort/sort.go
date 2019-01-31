@@ -28,6 +28,11 @@ func isoctal(b byte) bool {
 
 type Month int8
 
+func die(format string, a ...interface{}) {
+	fmt.Printf(format, a...)
+	os.Exit(1)
+}
+
 const (
 	Unknown Month = iota
 	January
@@ -186,7 +191,7 @@ func main() {
 	flag.String("sort", "", "sort according to WORD: general-numeric -g, human-numeric -h, month -M, numeric -n, random -R, version -V")
 	flag.Bool("V, version-sort", false, "natural sort of (version) numbers within text")
 	flag.String("batch-size", "", "merge at most NMERGE inputs at once; for more use temp files")
-	flag.String("c, check, check", "", "check for sorted input; do not sort")
+	check := flag.Bool("c, check, check", false, "check for sorted input; do not sort")
 	flag.String("C, check=quiet, check=silent", "", "like -c, but do not report first bad line")
 	flag.String("compress-program=PROG", "", "compress temporaries with PROG; decompress them with PROG -d")
 	flag.String("debug", "", "annotate the part of the line used to sort, and warn about questionable usage to stderr")
@@ -267,7 +272,7 @@ func main() {
 		return cmp(allLine, i, j)
 	}
 
-	sort := func(r io.Reader, w io.Writer) {
+	sort := func(r io.Reader, w io.Writer, name string) {
 		br := bufio.NewReader(r)
 		allLine := []sortLine{}
 		lineMap := map[int]struct{}{}
@@ -275,7 +280,7 @@ func main() {
 
 		for count := 0; ; count++ {
 			l, e := br.ReadBytes(lineDelim)
-			if e == io.EOF {
+			if e != nil && len(l) == 0 {
 				break
 			}
 
@@ -292,6 +297,15 @@ func main() {
 			}
 
 			allLine = append(allLine, sortLine{line: append([]byte{}, l...)})
+			if *check && count >= 1 {
+				if !defaultCmp(allLine, count-1, count) {
+					die("sort: %s:%d: disorder: %s", name, count+1, l)
+				}
+			}
+
+			if e != nil {
+				break
+			}
 		}
 
 		sort.Slice(allLine, func(i, j int) bool { return defaultCmp(allLine, i, j) })
@@ -321,7 +335,7 @@ func main() {
 	}
 
 	if len(args) == 0 {
-		sort(os.Stdin, w)
+		sort(os.Stdin, w, "-")
 		return
 	}
 
@@ -334,6 +348,6 @@ func main() {
 
 		defer fd.Close()
 
-		sort(fd, w)
+		sort(fd, w, a)
 	}
 }
