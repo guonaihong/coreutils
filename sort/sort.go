@@ -191,15 +191,15 @@ func main() {
 	flag.String("sort", "", "sort according to WORD: general-numeric -g, human-numeric -h, month -M, numeric -n, random -R, version -V")
 	flag.Bool("V, version-sort", false, "natural sort of (version) numbers within text")
 	flag.String("batch-size", "", "merge at most NMERGE inputs at once; for more use temp files")
-	check := flag.Bool("c, check, check", false, "check for sorted input; do not sort")
-	flag.String("C, check=quiet, check=silent", "", "like -c, but do not report first bad line")
+	check := flag.Bool("c", false, "check for sorted input; do not sort")
+	check2 := flag.Bool("C", false, "like -c, but do not report first bad line")
 	flag.String("compress-program=PROG", "", "compress temporaries with PROG; decompress them with PROG -d")
 	flag.String("debug", "", "annotate the part of the line used to sort, and warn about questionable usage to stderr")
 	flag.String("files0-from=F", "", "read input from the files specified by NUL-terminated names in file F; If F is - then read names from standard input")
 	flag.String("k, key=KEYDEF", "", "sort via a key; KEYDEF gives location and type")
 	flag.String("m, merge", "", "merge already sorted files; do not sort")
 	output := flag.String("o, output", "", "write result to FILE instead of standard output")
-	flag.String("s, stable", "", "stabilize sort by disabling last-resort comparison")
+	stable := flag.Bool("s, stable", false, "stabilize sort by disabling last-resort comparison")
 	flag.String("S, buffer-size", "", "use SIZE for main memory buffer")
 	flag.String("t, field-separator", "", "use SEP instead of non-blank to blank transition")
 	flag.String("T, temporary-directory=DIR", "", "use DIR for temporaries, not $TMPDIR or /tmp; multiple options specify multiple directories")
@@ -297,8 +297,11 @@ func main() {
 			}
 
 			allLine = append(allLine, sortLine{line: append([]byte{}, l...)})
-			if *check && count >= 1 {
+			if (*check || *check2) && count >= 1 {
 				if !defaultCmp(allLine, count-1, count) {
+					if *check2 {
+						os.Exit(1)
+					}
 					die("sort: %s:%d: disorder: %s", name, count+1, l)
 				}
 			}
@@ -308,7 +311,12 @@ func main() {
 			}
 		}
 
-		sort.Slice(allLine, func(i, j int) bool { return defaultCmp(allLine, i, j) })
+		sortFunc := sort.Slice
+		if *stable {
+			sortFunc = sort.SliceStable
+		}
+
+		sortFunc(allLine, func(i, j int) bool { return defaultCmp(allLine, i, j) })
 
 		if len(lineMap) > 0 {
 			for k, _ := range lineMap {
