@@ -10,12 +10,57 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 type sortLine struct {
-	line      []byte
-	number    int
-	setNumber bool
+	line        []byte
+	number      int
+	floatNumber float64
+	setNumber   bool
+}
+
+type fieldSep map[rune]struct{}
+
+func (f *fieldSep) init(s string) {
+	*f = make(fieldSep, 10)
+	for _, v := range s {
+		(*f)[v] = struct{}{}
+	}
+
+}
+
+func (f *fieldSep) is(r rune) bool {
+	_, ok := (*f)[r]
+	return ok
+}
+
+func isAlpha(r rune) bool {
+	return unicode.IsLower(r) || unicode.IsUpper(r)
+}
+
+func isAlnum(r rune) bool {
+	return isAlpha(r) || unicode.IsDigit(r)
+}
+
+func parsePrint(aLine []byte) (b []byte) {
+	for _, v := range aLine {
+		if unicode.IsPrint(rune(v)) {
+			b = append(b, v)
+		}
+	}
+	return
+}
+
+func parseDict(aLine []byte, f fieldSep) (b []byte) {
+
+	for _, v := range aLine {
+		if isAlnum(rune(v)) || f.is(rune(v)) {
+			b = append(b, v)
+		}
+	}
+
+	return
 }
 
 func isoctal(b byte) bool {
@@ -181,7 +226,7 @@ func main() {
 	dictionaryOrder := flag.Bool("d, dictionary-order", false, "consider only blanks and alphanumeric characters")
 	ignoreCase := flag.Bool("f, ignore-case", false, "fold lower case to upper case characters")
 	flag.String("g, general-numeric-sort", "", "compare according to general numerical value")
-	flag.String("i, ignore-nonprinting", "", "consider only printable characters")
+	ignoreNonprinting := flag.Bool("i, ignore-nonprinting", false, "consider only printable characters")
 	monthSort := flag.Bool("M, month-sort", false, "compare (unknown) < 'JAN' < ... < 'DEC'")
 	humanNumericSort := flag.Bool("h, human-numeric-sort", false, "compare human readable numbers (e.g., 2K 1G)")
 	numericSort := flag.Bool("n, numeric-sort", false, "compare according to string numerical value")
@@ -201,7 +246,7 @@ func main() {
 	output := flag.String("o, output", "", "write result to FILE instead of standard output")
 	stable := flag.Bool("s, stable", false, "stabilize sort by disabling last-resort comparison")
 	flag.String("S, buffer-size", "", "use SIZE for main memory buffer")
-	flag.String("t, field-separator", "", "use SEP instead of non-blank to blank transition")
+	fieldSeparator := flag.String("t, field-separator", "", "use SEP instead of non-blank to blank transition")
 	flag.String("T, temporary-directory=DIR", "", "use DIR for temporaries, not $TMPDIR or /tmp; multiple options specify multiple directories")
 	flag.String("parallel", "", "change the number of sorts run concurrently to N")
 	unique := flag.Bool("u, unique", false, "with -c, check for strict ordering; without -c, output only the first of an equal run")
@@ -209,6 +254,9 @@ func main() {
 
 	flag.Parse()
 	args := flag.Args()
+
+	fieldSep0 := fieldSep{}
+	fieldSep0.init(*fieldSeparator)
 
 	if *zeroTerminated {
 		lineDelim = byte(0)
@@ -239,7 +287,18 @@ func main() {
 				}
 			}
 
+			if *ignoreNonprinting {
+				diff = bytes.Compare(parsePrint(aLine), parsePrint(bLine))
+				if diff != 0 {
+					return diff < 0
+				}
+			}
+
 			if *dictionaryOrder {
+				diff = bytes.Compare(parseDict(aLine, fieldSep0), parseDict(bLine, fieldSep0))
+				if diff != 0 {
+					return diff < 0
+				}
 			}
 
 			if *monthSort {
