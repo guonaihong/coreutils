@@ -149,8 +149,8 @@ const (
 func parseHumanNumberic(b []byte) int {
 	s := string(bytes.TrimLeft(b, emptyStr))
 
-	i, haveOctal := isOctalStr(s, len(s))
-	if !haveOctal {
+	i, haveDecimal := isDecimalStr(s, len(s))
+	if !haveDecimal {
 		return 0
 	}
 
@@ -212,7 +212,7 @@ func isFloatStr(s string, max int) (i int, haveFloat bool) {
 	return isTypeStr(s, max, func(b byte) bool { return b >= '0' && b <= '9' || b == '.' || b == 'e' })
 }
 
-func isOctalStr(s string, max int) (i int, haveOctal bool) {
+func isDecimalStr(s string, max int) (i int, haveDecimal bool) {
 
 	return isTypeStr(s, max, func(b byte) bool { return b >= '0' && b <= '9' })
 }
@@ -223,8 +223,8 @@ func (sl *sortLine) parseNumber(b []byte) int {
 
 		line := string(b)
 
-		n, haveOctal := isOctalStr(line, len(line))
-		if !haveOctal {
+		n, haveDecimal := isDecimalStr(line, len(line))
+		if !haveDecimal {
 			return n
 		}
 
