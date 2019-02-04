@@ -18,6 +18,7 @@ type sortLine struct {
 	number      int
 	floatNumber float64
 	setNumber   bool
+	setFloat    bool
 }
 
 type fieldSep map[rune]struct{}
@@ -61,14 +62,6 @@ func parseDict(aLine []byte, f fieldSep) (b []byte) {
 	}
 
 	return
-}
-
-func isoctal(b byte) bool {
-	if b >= '0' && b <= '7' {
-		return true
-	}
-
-	return false
 }
 
 type Month int8
@@ -183,49 +176,69 @@ func parseHumanNumberic(b []byte) int {
 
 }
 
-func isOctalStr(s string, max int) (i int, haveOctal bool) {
-
-	for i = 0; i < len(s); i++ {
-		if i >= max {
-			return i, haveOctal
+func (sl *sortLine) parseGeneralNumericSort(b []byte) float64 {
+	if !sl.setFloat {
+		defer func() { sl.setFloat = true }()
+		line := string(b)
+		n, haveFloat := isFloatStr(line, len(line))
+		if !haveFloat {
+			return 0.0
 		}
 
-		if !isoctal(s[i]) {
-			return i, haveOctal
-		}
-
-		haveOctal = true
+		sl.floatNumber, _ = strconv.ParseFloat(line[:n], 64)
+		return sl.floatNumber
 	}
 
-	return i, haveOctal
+	return sl.floatNumber
 }
 
-func (sl *sortLine) parseNumber() {
+func isTypeStr(s string, max int, cb func(b byte) bool) (i int, haveStr bool) {
+	for i = 0; i < len(s); i++ {
+		if i >= max {
+			return i, haveStr
+		}
+
+		if !cb(s[i]) {
+			return i, haveStr
+		}
+
+		haveStr = true
+	}
+
+	return i, haveStr
+}
+
+func isFloatStr(s string, max int) (i int, haveFloat bool) {
+	return isTypeStr(s, max, func(b byte) bool { return b >= '0' && b <= '9' || b == '.' || b == 'e' })
+}
+
+func isOctalStr(s string, max int) (i int, haveOctal bool) {
+
+	return isTypeStr(s, max, func(b byte) bool { return b >= '0' && b <= '9' })
+}
+
+func (sl *sortLine) parseNumber(b []byte) int {
 	if !sl.setNumber {
 		defer func() { sl.setNumber = true }()
 
-		line := sl.line
-		nstr := string(line[:len(line)-1])
+		line := string(b)
 
-		n, haveOctal := isOctalStr(nstr, len(nstr))
+		n, haveOctal := isOctalStr(line, len(line))
 		if !haveOctal {
-			return
+			return n
 		}
 
-		sl.number, _ = strconv.Atoi(nstr[:n])
-		//fmt.Printf("%d--->%s\n", sl.number, sl.numberErr)
+		sl.number, _ = strconv.Atoi(line[:n])
 	}
-}
 
-func (sl *sortLine) isNumber() bool {
-	return sl.setNumber
+	return sl.number
 }
 
 func main() {
 	ignoreLeadingBlanks := flag.Bool("b, ignore-leading-blanks", false, "ignore leading blanks")
 	dictionaryOrder := flag.Bool("d, dictionary-order", false, "consider only blanks and alphanumeric characters")
 	ignoreCase := flag.Bool("f, ignore-case", false, "fold lower case to upper case characters")
-	flag.String("g, general-numeric-sort", "", "compare according to general numerical value")
+	generalNumericSort := flag.Bool("g, general-numeric-sort", false, "compare according to general numerical value")
 	ignoreNonprinting := flag.Bool("i, ignore-nonprinting", false, "consider only printable characters")
 	monthSort := flag.Bool("M, month-sort", false, "compare (unknown) < 'JAN' < ... < 'DEC'")
 	humanNumericSort := flag.Bool("h, human-numeric-sort", false, "compare human readable numbers (e.g., 2K 1G)")
@@ -287,6 +300,13 @@ func main() {
 				}
 			}
 
+			if *generalNumericSort {
+				diff = int(allLine[i].parseGeneralNumericSort(aLine) - allLine[j].parseGeneralNumericSort(bLine))
+				if diff != 0 {
+					return diff < 0
+				}
+			}
+
 			if *ignoreNonprinting {
 				diff = bytes.Compare(parsePrint(aLine), parsePrint(bLine))
 				if diff != 0 {
@@ -309,14 +329,10 @@ func main() {
 			}
 
 			if *numericSort {
-				//fmt.Printf("i = %d, %d\n", i, len(allLine))
-				allLine[i].parseNumber()
-				allLine[j].parseNumber()
-
-				if allLine[i].isNumber() && allLine[j].isNumber() {
-					if allLine[i].number != allLine[j].number {
-						return allLine[i].number < allLine[j].number
-					}
+				diff = allLine[i].parseNumber(aLine) - allLine[j].parseNumber(bLine)
+				//fmt.Printf("%s, %s, %d, %d\n", aLine, bLine, allLine[i].number, allLine[j].number)
+				if diff != 0 {
+					return diff < 0
 				}
 
 			}
