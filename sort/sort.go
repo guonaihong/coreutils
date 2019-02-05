@@ -271,8 +271,8 @@ func main() {
 	randomSort := flag.Bool("R, random-sort", false, "shuffle, but group identical keys.  See shuf(1)")
 	randomSource := flag.String("random-source", "", "get random bytes from FILE")
 	reverse := flag.Bool("r, reverse", false, "reverse the result of comparisons")
-	flag.String("sort", "", "sort according to WORD: general-numeric -g, human-numeric -h, month -M, numeric -n, random -R, version -V")
-	flag.Bool("V, version-sort", false, "natural sort of (version) numbers within text")
+	sortFlag := flag.Bool("sort", false, "sort according to WORD: general-numeric -g, human-numeric -h, month -M, numeric -n, random -R, version -V")
+	versionSort := flag.Bool("V, version-sort", false, "natural sort of (version) numbers within text")
 	flag.String("batch-size", "", "merge at most NMERGE inputs at once; for more use temp files")
 	check := flag.Bool("c", false, "check for sorted input; do not sort")
 	check2 := flag.Bool("C", false, "like -c, but do not report first bad line")
@@ -300,6 +300,14 @@ func main() {
 		lineDelim = byte(0)
 	}
 
+	if *sortFlag {
+		*generalNumericSort = true
+		*humanNumericSort = true
+		*monthSort = true
+		*numericSort = true
+		*randomSort = true
+		*versionSort = true
+	}
 	defaultCmp := func(allLine []sortLine, i, j int) bool {
 		cmp := func(allLine []sortLine, i, j int) bool {
 			aLine, bLine := allLine[i].line, allLine[j].line
