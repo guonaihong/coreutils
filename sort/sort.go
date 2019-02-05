@@ -3,13 +3,17 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"github.com/guonaihong/flag"
 	"io"
+	"math"
+	"math/rand"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -234,6 +238,27 @@ func (sl *sortLine) parseNumber(b []byte) int {
 	return sl.number
 }
 
+func readFile(fileName string, body []byte) (n int, err error) {
+	var fd *os.File
+	fd, err = os.Open(fileName)
+	if err != nil {
+		die("sort: open fail: %s \n", err)
+	}
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	fd.Seek(r.Int63n(math.MaxInt32), os.SEEK_SET)
+	return fd.Read(body)
+}
+
+func getRandSource(fileName string) *rand.Rand {
+	seed := int64(0)
+	buf := make([]byte, 8)
+	readFile(fileName, buf)
+	read := bytes.NewReader(buf)
+	binary.Read(read, binary.LittleEndian, &seed)
+	return rand.New(rand.NewSource(seed))
+}
+
 func main() {
 	ignoreLeadingBlanks := flag.Bool("b, ignore-leading-blanks", false, "ignore leading blanks")
 	dictionaryOrder := flag.Bool("d, dictionary-order", false, "consider only blanks and alphanumeric characters")
@@ -244,7 +269,7 @@ func main() {
 	humanNumericSort := flag.Bool("h, human-numeric-sort", false, "compare human readable numbers (e.g., 2K 1G)")
 	numericSort := flag.Bool("n, numeric-sort", false, "compare according to string numerical value")
 	randomSort := flag.Bool("R, random-sort", false, "shuffle, but group identical keys.  See shuf(1)")
-	flag.String("random-source", "", "get random bytes from FILE")
+	randomSource := flag.String("random-source", "", "get random bytes from FILE")
 	reverse := flag.Bool("r, reverse", false, "reverse the result of comparisons")
 	flag.String("sort", "", "sort according to WORD: general-numeric -g, human-numeric -h, month -M, numeric -n, random -R, version -V")
 	flag.Bool("V, version-sort", false, "natural sort of (version) numbers within text")
@@ -392,6 +417,26 @@ func main() {
 		}
 
 		sortFunc(allLine, func(i, j int) bool { return defaultCmp(allLine, i, j) })
+
+		if len(*randomSource) > 0 && len(lineMap) > 0 {
+			for len(lineMap) > 0 {
+				r := getRandSource(*randomSource)
+				k := 0
+				for {
+					k = int(r.Int63n(63))
+					_, ok := lineMap[k]
+					if !ok {
+						continue
+					}
+					break
+
+				}
+
+				w.Write(allLine[k].line)
+				delete(lineMap, k)
+			}
+			return
+		}
 
 		if len(lineMap) > 0 {
 			for k, _ := range lineMap {
