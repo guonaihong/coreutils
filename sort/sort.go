@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/guonaihong/flag"
 	"io"
+	"io/ioutil"
 	"math"
 	"math/rand"
 	"os"
@@ -46,6 +47,15 @@ func isAlpha(r rune) bool {
 
 func isAlnum(r rune) bool {
 	return isAlpha(r) || unicode.IsDigit(r)
+}
+
+func getFileNames(fileName string) []string {
+	all, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		die("sort: %s\n", err)
+	}
+
+	return strings.Split(string(all), "\000")
 }
 
 func parsePrint(aLine []byte) (b []byte) {
@@ -278,7 +288,7 @@ func main() {
 	check2 := flag.Bool("C", false, "like -c, but do not report first bad line")
 	flag.String("compress-program=PROG", "", "compress temporaries with PROG; decompress them with PROG -d")
 	flag.String("debug", "", "annotate the part of the line used to sort, and warn about questionable usage to stderr")
-	flag.String("files0-from=F", "", "read input from the files specified by NUL-terminated names in file F; If F is - then read names from standard input")
+	files0From := flag.String("files0-from", "", "read input from the files specified by NUL-terminated names in file F; If F is - then read names from standard input")
 	flag.String("k, key=KEYDEF", "", "sort via a key; KEYDEF gives location and type")
 	flag.String("m, merge", "", "merge already sorted files; do not sort")
 	output := flag.String("o, output", "", "write result to FILE instead of standard output")
@@ -468,6 +478,10 @@ func main() {
 		}
 		w = fd
 		defer fd.Close()
+	}
+
+	if len(*files0From) > 0 {
+		args = append(args, getFileNames(*files0From)...)
 	}
 
 	if len(args) == 0 {
