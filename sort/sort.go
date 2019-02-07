@@ -22,6 +22,7 @@ type sortLine struct {
 	line        []byte
 	number      int
 	floatNumber float64
+	refCount    int
 	setNumber   bool
 	setFloat    bool
 }
@@ -269,6 +270,141 @@ func getRandSource(fileName string) *rand.Rand {
 	return rand.New(rand.NewSource(seed))
 }
 
+func mergeFiles(r1, r2 io.Reader, w io.Writer, cmp func(lineA, lineB *sortLine) bool) {
+	br1 := bufio.NewReader(r1)
+	br2 := bufio.NewReader(r2)
+
+	var e1, e2 error
+	var l1, l2 []byte
+	var line1, line2 sortLine
+	haveLine1, haveLine2 := true, true
+	loopLine1, loopLine2 := true, true
+
+	if r2 == nil {
+		haveLine2 = false
+	}
+
+	for {
+
+		if haveLine1 && loopLine1 {
+			l1, e1 = br1.ReadBytes(lineDelim)
+			if e1 != nil && len(l1) == 0 {
+				haveLine1 = false
+			}
+
+			line1.line = append([]byte{}, l1...)
+		}
+
+		if haveLine2 && loopLine2 {
+			l2, e2 = br2.ReadBytes(lineDelim)
+			if e2 != nil && len(l2) == 0 {
+				haveLine1 = false
+			}
+
+			line2.line = append([]byte{}, l2...)
+
+		}
+
+		if cmp(&line1, &line2) {
+			w.Write(l1)
+			loopLine1 = true
+			loopLine2 = false
+		} else {
+			w.Write(l2)
+			loopLine1 = false
+			loopLine2 = true
+		}
+
+		if e1 != nil && e2 != nil {
+			break
+		}
+	}
+}
+
+func openFd(fileName string) (*os.File, error) {
+	if fileName == "-" {
+		return os.Stdin, nil
+	}
+
+	return os.Open(fileName)
+}
+
+func closeFd(fd *os.File) {
+	if fd != os.Stdin {
+		fd.Close()
+	}
+}
+
+func openMergeFiles(files []string, w io.Writer, cmp func(lineA, lineB *sortLine) bool) {
+
+	fileName := files[0]
+	yesTmp := false
+
+	for i := 1; i < len(files); i++ {
+
+		fd1, err := openFd(fileName)
+		if err != nil {
+			die("sort: %s\n", err)
+		}
+
+		fd2, err := openFd(files[i])
+		if err != nil {
+			die("sort: %s\n", err)
+		}
+
+		tmpFile, err := ioutil.TempFile(os.TempDir(), "sort-")
+		if err != nil {
+			die("sort: %s\n", err)
+		}
+
+		mergeFiles(fd1, fd2, tmpFile, cmp)
+		closeFd(fd1)
+		if yesTmp {
+			os.Remove(fileName)
+		}
+
+		closeFd(fd2)
+		fileName = tmpFile.Name()
+		yesTmp = true
+		tmpFile.Close()
+	}
+
+	if len(files) == 1 {
+		fileName = files[0]
+	}
+
+	fd1, err := openFd(fileName)
+	if err != nil {
+		die("sort: %s\n", err)
+	}
+
+	mergeFiles(fd1, nil, w, cmp)
+}
+
+func openFiles(files []string, cb func(r io.Reader, name string)) {
+	for _, a := range files {
+		fd, err := openFd(a)
+		if err != nil {
+			die("sort: %s\n", err)
+		}
+		cb(fd, a)
+		closeFd(fd)
+	}
+}
+
+type sortHead struct {
+	uniqueMap map[string]struct{}
+	lineMap   map[int]struct{}
+	allLine   []sortLine
+	count     int
+}
+
+func (s *sortHead) init() {
+	s.uniqueMap = map[string]struct{}{}
+	s.lineMap = map[int]struct{}{}
+	s.count = 0
+}
+
 func main() {
 	ignoreLeadingBlanks := flag.Bool("b, ignore-leading-blanks", false, "ignore leading blanks")
 	dictionaryOrder := flag.Bool("d, dictionary-order", false, "consider only blanks and alphanumeric characters")
@@ -290,7 +426,7 @@ func main() {
 	flag.String("debug", "", "annotate the part of the line used to sort, and warn about questionable usage to stderr")
 	files0From := flag.String("files0-from", "", "read input from the files specified by NUL-terminated names in file F; If F is - then read names from standard input")
 	flag.String("k, key=KEYDEF", "", "sort via a key; KEYDEF gives location and type")
-	flag.String("m, merge", "", "merge already sorted files; do not sort")
+	merge := flag.Bool("m, merge", false, "merge already sorted files; do not sort")
 	output := flag.String("o, output", "", "write result to FILE instead of standard output")
 	stable := flag.Bool("s, stable", false, "stabilize sort by disabling last-resort comparison")
 	flag.String("S, buffer-size", "", "use SIZE for main memory buffer")
@@ -318,9 +454,10 @@ func main() {
 		*randomSort = true
 		*versionSort = true
 	}
-	defaultCmp := func(allLine []sortLine, i, j int) bool {
-		cmp := func(allLine []sortLine, i, j int) bool {
-			aLine, bLine := allLine[i].line, allLine[j].line
+
+	cmpCore := func(lineA, lineB *sortLine) bool {
+		cmp := func(lineA, lineB *sortLine) bool {
+			aLine, bLine := lineA.line, lineB.line
 
 			aLine = delLineBreaks(aLine)
 			bLine = delLineBreaks(bLine)
@@ -344,7 +481,7 @@ func main() {
 			}
 
 			if *generalNumericSort {
-				diff = int(allLine[i].parseGeneralNumericSort(aLine) - allLine[j].parseGeneralNumericSort(bLine))
+				diff = int(lineA.parseGeneralNumericSort(aLine) - lineB.parseGeneralNumericSort(bLine))
 				if diff != 0 {
 					return diff < 0
 				}
@@ -372,8 +509,8 @@ func main() {
 			}
 
 			if *numericSort {
-				diff = allLine[i].parseNumber(aLine) - allLine[j].parseNumber(bLine)
-				//fmt.Printf("%s, %s, %d, %d\n", aLine, bLine, allLine[i].number, allLine[j].number)
+				diff = lineA.parseNumber(aLine) - lineB.parseNumber(bLine)
+				//fmt.Printf("%s, %s, %d, %d\n", aLine, bLine, lineA.number, lineB.number)
 				if diff != 0 {
 					return diff < 0
 				}
@@ -384,43 +521,89 @@ func main() {
 		}
 
 		if *reverse {
-			return !cmp(allLine, i, j)
+			return !cmp(lineA, lineB)
 		}
 
-		return cmp(allLine, i, j)
+		return cmp(lineA, lineB)
 	}
 
-	sort := func(r io.Reader, w io.Writer, name string) {
-		br := bufio.NewReader(r)
-		allLine := []sortLine{}
-		lineMap := map[int]struct{}{}
-		uniqueMap := map[string]struct{}{}
+	defaultCmp := func(allLine []sortLine, i, j int) bool {
+		lineA, lineB := allLine[i], allLine[j]
+		return cmpCore(&lineA, &lineB)
+	}
 
-		for count := 0; ; count++ {
+	sortHead0 := sortHead{}
+    sortHead0.init()
+
+	sortAndPrint := func(w io.Writer, head *sortHead) {
+		sortFunc := sort.Slice
+		if *stable {
+			sortFunc = sort.SliceStable
+		}
+
+		sortFunc(head.allLine, func(i, j int) bool { return defaultCmp(head.allLine, i, j) })
+
+		if len(*randomSource) > 0 && len(head.lineMap) > 0 {
+			for len(head.lineMap) > 0 {
+				r := getRandSource(*randomSource)
+				k := 0
+				for {
+					k = int(r.Int63n(63))
+					_, ok := head.lineMap[k]
+					if !ok {
+						continue
+					}
+					break
+
+				}
+
+				w.Write(head.allLine[k].line)
+				delete(head.lineMap, k)
+			}
+			return
+		}
+
+		if len(head.lineMap) > 0 {
+			for k, _ := range head.lineMap {
+				w.Write(head.allLine[k].line)
+			}
+
+			return
+		}
+
+		for _, v := range head.allLine {
+			w.Write(v.line)
+		}
+	}
+
+	appendLine := func(r io.Reader, name string, head *sortHead) {
+		br := bufio.NewReader(r)
+
+		for ; ; head.count++ {
 			l, e := br.ReadBytes(lineDelim)
 			if e != nil && len(l) == 0 {
 				break
 			}
 
 			if *randomSort {
-				lineMap[count] = struct{}{}
+				head.lineMap[head.count] = struct{}{}
 			}
 
 			if *unique {
 				key := string(l)
-				if _, ok := uniqueMap[key]; ok {
+				if _, ok := head.uniqueMap[key]; ok {
 					continue
 				}
-				uniqueMap[key] = struct{}{}
+				head.uniqueMap[key] = struct{}{}
 			}
 
-			allLine = append(allLine, sortLine{line: append([]byte{}, l...)})
-			if (*check || *check2) && count >= 1 {
-				if !defaultCmp(allLine, count-1, count) {
+			head.allLine = append(head.allLine, sortLine{line: append([]byte{}, l...)})
+			if (*check || *check2) && head.count >= 1 {
+				if !defaultCmp(head.allLine, head.count-1, head.count) {
 					if *check2 {
 						os.Exit(1)
 					}
-					die("sort: %s:%d: disorder: %s", name, count+1, l)
+					die("sort: %s:%d: disorder: %s", name, head.count+1, l)
 				}
 			}
 
@@ -429,44 +612,6 @@ func main() {
 			}
 		}
 
-		sortFunc := sort.Slice
-		if *stable {
-			sortFunc = sort.SliceStable
-		}
-
-		sortFunc(allLine, func(i, j int) bool { return defaultCmp(allLine, i, j) })
-
-		if len(*randomSource) > 0 && len(lineMap) > 0 {
-			for len(lineMap) > 0 {
-				r := getRandSource(*randomSource)
-				k := 0
-				for {
-					k = int(r.Int63n(63))
-					_, ok := lineMap[k]
-					if !ok {
-						continue
-					}
-					break
-
-				}
-
-				w.Write(allLine[k].line)
-				delete(lineMap, k)
-			}
-			return
-		}
-
-		if len(lineMap) > 0 {
-			for k, _ := range lineMap {
-				w.Write(allLine[k].line)
-			}
-
-			return
-		}
-
-		for _, v := range allLine {
-			w.Write(v.line)
-		}
 	}
 
 	w := os.Stdout
@@ -485,19 +630,17 @@ func main() {
 	}
 
 	if len(args) == 0 {
-		sort(os.Stdin, w, "-")
+		args = append(args, "-")
+	}
+
+	if *merge {
+		openMergeFiles(args, w, cmpCore)
 		return
 	}
 
-	for _, a := range args {
-		fd, err := os.Open(a)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			return
-		}
+	openFiles(args, func(fd io.Reader, name string) {
+		appendLine(fd, name, &sortHead0)
+	})
+	sortAndPrint(w, &sortHead0)
 
-		defer fd.Close()
-
-		sort(fd, w, a)
-	}
 }
