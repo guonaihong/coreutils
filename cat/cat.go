@@ -63,8 +63,7 @@ func main() {
 				}
 
 				if !(*numberNonblank && len(l) == 1) {
-					newLine := append([]byte{}, []byte(fmt.Sprintf("%6d  ", count))...)
-					l = append(newLine, l...)
+					l = append([]byte(fmt.Sprintf("%6d  ", count)), l...)
 				}
 			}
 
