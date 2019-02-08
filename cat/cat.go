@@ -88,5 +88,5 @@ func main() {
 		}
 		return
 	}
-	catCore(os.Stdout)
+	catCore(os.Stdin)
 }
