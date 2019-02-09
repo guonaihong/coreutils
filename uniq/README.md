@@ -50,25 +50,27 @@ hack
 
 这个对比健可以作为uniq操作时的索引
 ```
-cat data.txt
-u: 01: gnu
-d: 04: linux
-u: 01: bash
-u: 01: hack
+cat uniq.txt
+u:01:gnu
+d:04:linux
+u:01:bash
+u:01:hack
 ```
 
 为了只测试指定的字符(铁略前两个字符，使用接下来的两个字符)，我们使用-s 2跳过前两个字符，使用-w 2选项指定后续的两个字符:
 ```
-sort data.txt | uniq -s 2 -w 2
-d: 04: linux
-u: 01: bash
+sort uniq.txt | ./uniq -s 2 -w 2
+d:04:linux
+u:01:bash
 ```
 
 我们将命令输出作为xargs命令的输入时，最好为输出的各行添加一个0值字符终止符，使用uniq命令的输入作为xargs的数据源时，
 同样应当如此。如果没有使用0值字节终止符，那么在默认情况下，xargs命令会用空格来分割参数。例如，来自stdin的文本行"this is a line"
 会被xargs视为4个不同的参数。如果使用0值字节终止符，那么\0就被作为定界符，此时，包含空格的行就能够被正确的解析为单个参数。
 -z 选项可以生成由0值字节终止的输出
+```
 uniq -z file.txt
+```
 
 下面的命令将删除所有指定的文件，这些文件的名字是从files.txt中读取的。
 ```

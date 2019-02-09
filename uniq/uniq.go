@@ -13,14 +13,17 @@ import (
 var lineDelim byte = '\n'
 var endLineDelim byte = '\n'
 
+type ioCount struct {
+	input  int
+	output int
+}
+
 type uniq struct {
-	input  map[string]int
-	output map[string]struct{}
+	count map[string]ioCount
 }
 
 func (u *uniq) init() {
-	u.input = map[string]int{}
-	u.output = map[string]struct{}{}
+	u.count = map[string]ioCount{}
 }
 
 func die(format string, a ...interface{}) {
@@ -88,10 +91,18 @@ func replaceEndLineDelim(l []byte) {
 
 }
 
+func checkAllRepeated(arg string) {
+	switch arg {
+	case "none", "prepend", "separate":
+	default:
+		die("uniq: invalid argument `%s' for `--all-repeated' \nValid arguments are:\n  - `none'\n  - `prepend'\n  - `separate'\n", arg)
+	}
+}
+
 func main() {
 	count := flag.Bool("c, count", false, "prefix lines by the number of occurrences")
 	repeated := flag.Bool("d, repeated", false, "only print duplicate lines")
-	flag.String("D, all-repeated", "", "print all duplicate lines delimit-method={none(default),prepend,separate} Delimiting is done with blank lines")
+	allRepeated := flag.String("D, all-repeated", "", "print all duplicate lines delimit-method={none(default),prepend,separate} Delimiting is done with blank lines")
 	skipFields := flag.Int("f, skip-fields", math.MinInt32, "avoid comparing the first N fields")
 	ignoreCase := flag.Bool("i, ignore-case", false, "ignore differences in case when comparing")
 	skipChars := flag.Int("s, skip-chars", math.MinInt32, "avoid comparing the first N characters")
@@ -105,8 +116,8 @@ func main() {
 	uniqHead := uniq{}
 	uniqHead.init()
 
-	if *skipFields < 0 {
-		die("uniq: invalid number of fields to skip\n")
+	if len(*allRepeated) > 0 {
+		checkAllRepeated(*allRepeated)
 	}
 
 	if *zeroTerminated {
@@ -122,12 +133,15 @@ func main() {
 			l = getSkipFields(*skipFields, l)
 		}
 
-		if *skipFields != math.MinInt32 && *skipChars >= 0 {
-			l = getSkipFields(*skipChars, l)
+		if *skipChars != math.MinInt32 && *skipChars >= 0 {
+			l = getSkipChars(*skipChars, l)
 		}
 
 		if *checkChars != math.MinInt32 && *checkChars >= 0 {
+			l = getCheckChars(*checkChars, l)
 		}
+
+		//fmt.Printf("skipChars = %d, checkChars = %d\n", *skipChars, *checkChars)
 		return string(l)
 	}
 
@@ -144,7 +158,9 @@ func main() {
 			allLine = append(allLine, append([]byte{}, l...))
 
 			key := getKey(l)
-			uniqHead.input[key]++
+			ioCount, _ := uniqHead.count[key]
+			ioCount.input++
+			uniqHead.count[key] = ioCount
 		}
 
 		key := ""
@@ -152,38 +168,57 @@ func main() {
 
 			key = getKey(l)
 
-			v, ok := uniqHead.input[key]
+			ioCount, ok := uniqHead.count[key]
 			if !ok {
 				panic("not foud" + string(l))
 			}
 
 			if *count {
-				l = append([]byte(fmt.Sprintf("%6d  ", v)), l...)
+				l = append([]byte(fmt.Sprintf("%6d  ", ioCount.input)), l...)
 			}
 
 			if *unique {
-				if v == 1 {
+				if ioCount.input == 1 {
 					goto write
 				}
 				goto next
 			}
 
 			if *repeated {
-				if v > 1 {
+				if ioCount.input > 1 {
 					goto write
 				}
 				goto next
 			}
 
 		write:
-			if _, ok := uniqHead.output[key]; ok {
-				continue
+			if len(*allRepeated) == 0 {
+				if ioCount, ok = uniqHead.count[key]; ok {
+					continue
+				}
+			}
+
+			switch *allRepeated {
+			case "none":
+				if ioCount.input == 1 {
+					continue
+				}
+			case "prepend":
+				if ioCount.input > 1 && ioCount.output == 0 {
+					l = append([]byte{'\n'}, l...)
+				}
+			case "separate":
+				if ioCount.input > 1 && ioCount.output == ioCount.input-1 {
+					l = append(l, '\n')
+				}
 			}
 
 			replaceEndLineDelim(l)
 			w.Write(l)
 		next:
-			uniqHead.output[key] = struct{}{}
+			ioCount, _ = uniqHead.count[key]
+			ioCount.output++
+			uniqHead.count[key] = ioCount
 		}
 	}
 
