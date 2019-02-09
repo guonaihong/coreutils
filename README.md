@@ -13,6 +13,7 @@ coreutils项目是gnu coreutils的扩展
 * paste [详情](./paste/README.md)
 * tee [详情](./tee/README.md)
 * tr [详情](./tr/README.md)
+* uniq [详情](./uniq/README.md)
 * whoami [详情](./whoami/README.md)
 * yes [详情](./yes/README.md)
 * sleep [详情](./sleep/README.md)

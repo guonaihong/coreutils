@@ -8,11 +8,31 @@ uniq
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/uniq
 ```
 
+#### diff
+与gnu uniq差异部分，相比gnu uniq，本实现不依赖sort命令，可以实现对文件行的去重操作，或者摘出独一无二行，或者重复行。
+
 #### usage
 
 ```console
--c, --count Prefix lines with a number representing how many times they occurred.
--d, --repeated  Only print duplicated lines.
+Usage of ./uniq:
+  -D, --all-repeated string
+        print all duplicate lines delimit-method={none(default),prepend,separate} Delimiting is done with blank lines
+  -c, --count
+        prefix lines by the number of occurrences
+  -d, --repeated
+        only print duplicate lines
+  -f, --skip-fields int
+        avoid comparing the first N fields (default -2147483648)
+  -i, --ignore-case
+        ignore differences in case when comparing
+  -s, --skip-chars int
+        avoid comparing the first N characters (default -2147483648)
+  -u, --unique
+        only print unique lines
+  -w, --check-chars int
+        compare no more than N characters in lines (default -2147483648)
+  -z, --zero-terminated
+        end lines with 0 byte, not newline
 ```
 #### Example
 (下面的示例来自linux shell scripting cookbook)
@@ -77,3 +97,30 @@ uniq -z file.txt
 uniq -z file.txt | xargs -0 rm
 ```
 如果某个文件名出现多次,uniq命令只会将这个文件名写入stdout一次，这样就可以避免出现rm: cannot remove FILENAME: No such file or directory
+
+测试 -all-repeated=prepend选项
+```
+echo -e "\naa\naa\ndd\n11\nbb\nbb\ncc\ncc\nff"|LC_ALL=C ./uniq --all-repeated=prepend
+
+aa
+aa
+
+bb
+bb
+
+cc
+cc
+```
+
+测试 -all-repeated=separate选项
+```
+echo -e "aa\naa\ndd\n11\nbb\nbb\ncc\ncc\nff"|LC_ALL=C ./uniq --all-repeated=separate
+aa
+aa
+
+bb
+bb
+
+cc
+cc
+```
