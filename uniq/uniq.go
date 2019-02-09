@@ -34,8 +34,8 @@ func die(format string, a ...interface{}) {
 func getSkipFields(skipFields int, l []byte) []byte {
 	fields := bytes.Split(l, []byte(" "))
 	// Index starts from 1
-	if skipFields-1 >= 0 && skipFields-1 < len(fields) {
-		return bytes.Join(fields[skipFields-1:], []byte(" "))
+	if skipFields >= 0 && skipFields < len(fields) {
+		return bytes.Join(fields[skipFields:], []byte(" "))
 	}
 
 	return []byte{}
@@ -99,6 +99,11 @@ func checkAllRepeated(arg string) {
 	}
 }
 
+func writeLine(w io.Writer, l []byte) {
+	replaceEndLineDelim(l)
+	w.Write(l)
+}
+
 func main() {
 	count := flag.Bool("c, count", false, "prefix lines by the number of occurrences")
 	repeated := flag.Bool("d, repeated", false, "only print duplicate lines")
@@ -131,6 +136,7 @@ func main() {
 
 		if *skipFields != math.MinInt32 && *skipFields >= 0 {
 			l = getSkipFields(*skipFields, l)
+			//fmt.Printf("skip fields after l = (%s)\n", l)
 		}
 
 		if *skipChars != math.MinInt32 && *skipChars >= 0 {
@@ -148,6 +154,7 @@ func main() {
 	uniqCore := func(r io.Reader, w io.Writer) {
 		br := bufio.NewReader(r)
 		var allLine [][]byte
+		var preLine []byte
 
 		for lineNo := 0; ; lineNo++ {
 			l, e := br.ReadBytes(lineDelim)
@@ -193,32 +200,42 @@ func main() {
 
 		write:
 			if len(*allRepeated) == 0 {
-				if ioCount, ok = uniqHead.count[key]; ok {
+				if ioCount, ok = uniqHead.count[key]; ok && ioCount.output > 0 {
+					continue
+				}
+			} else {
+				if ioCount.input == 1 {
 					continue
 				}
 			}
 
 			switch *allRepeated {
 			case "none":
-				if ioCount.input == 1 {
-					continue
-				}
 			case "prepend":
 				if ioCount.input > 1 && ioCount.output == 0 {
 					l = append([]byte{'\n'}, l...)
 				}
 			case "separate":
 				if ioCount.input > 1 && ioCount.output == ioCount.input-1 {
-					l = append(l, '\n')
+
+					preLine = append([]byte{}, l...)
+					goto next
+				}
+
+				if preLine != nil {
+					writeLine(w, append(preLine, '\n'))
 				}
 			}
 
-			replaceEndLineDelim(l)
-			w.Write(l)
+			writeLine(w, l)
 		next:
 			ioCount, _ = uniqHead.count[key]
 			ioCount.output++
 			uniqHead.count[key] = ioCount
+		}
+
+		if preLine != nil {
+			writeLine(w, preLine)
 		}
 	}
 
