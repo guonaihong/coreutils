@@ -35,7 +35,7 @@ Usage of ./uniq:
         end lines with 0 byte, not newline
 ```
 #### Example
-(下面的示例来自linux shell scripting cookbook)
+(下面的示例来自linux shell scripting cookbook) 和本人构造的测试用例
 
 uniq只能作用于排过序的数据，因此，uniq通常都与sort命令结合使用。
 ```
@@ -123,4 +123,73 @@ bb
 
 cc
 cc
+```
+
+测试 --group=separate
+```
+echo  -e "222\n222\n111\n111\n333\naaa\n" |./uniq --group=separate|cat -n
+     1  222
+     2  222
+     3  
+     4  111
+     5  111
+     6  
+     7  333
+     8  
+     9  aaa
+    10  
+    11  
+
+```
+
+测试 --group=prepend
+```
+echo  -e "222\n222\n111\n111\n333\naaa\n" |./uniq --group=prepend|cat -n
+     1  
+     2  222
+     3  222
+     4  
+     5  111
+     6  111
+     7  
+     8  333
+     9  
+    10  aaa
+    11  
+    12  
+```
+测试 --group=both
+```
+echo  -e "222\n222\n111\n111\n333\naaa\n" |./uniq --group=both|cat -n
+     1  
+     2  222
+     3  222
+     4  
+     5  111
+     6  111
+     7  
+     8  333
+     9  
+    10  aaa
+    11  
+    12  
+    13  
+
+```
+测试 --group=append
+```
+echo  -e "222\n222\n111\n111\n333\naaa\n" |./uniq --group=append|cat -n
+     1  222
+     2  222
+     3  
+     4  111
+     5  111
+     6  
+     7  333
+     8  
+     9  aaa
+    10  
+    11  
+    12  
+
 ```

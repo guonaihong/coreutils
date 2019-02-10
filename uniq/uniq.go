@@ -99,6 +99,14 @@ func checkAllRepeated(arg string) {
 	}
 }
 
+func checkGroup(arg string) {
+	switch arg {
+	case "prepend", "append", "separate", "both":
+	default:
+		die("uniq: invalid argument `%s' for `--group' \nValid arguments are:\n  - `prepend'\n  - `append'\n  - `separate'\n  - `separate'\n", arg)
+	}
+}
+
 func writeLine(w io.Writer, l []byte) {
 	replaceEndLineDelim(l)
 	w.Write(l)
@@ -107,8 +115,10 @@ func writeLine(w io.Writer, l []byte) {
 func main() {
 	count := flag.Bool("c, count", false, "prefix lines by the number of occurrences")
 	repeated := flag.Bool("d, repeated", false, "only print duplicate lines")
-	allRepeated := flag.String("D, all-repeated", "", "print all duplicate lines delimit-method={none(default),prepend,separate} Delimiting is done with blank lines")
+	dup := flag.Bool("D", false, "print all duplicate lines")
+	allRepeated := flag.String("all-repeated", "", "like -D, but allow separating groups with an empty line; METHOD={none(default),prepend,separate}")
 	skipFields := flag.Int("f, skip-fields", math.MinInt32, "avoid comparing the first N fields")
+	group := flag.String("group", "", "show all items, separating groups with an empty line; METHOD={separate(default),prepend,append,both}")
 	ignoreCase := flag.Bool("i, ignore-case", false, "ignore differences in case when comparing")
 	skipChars := flag.Int("s, skip-chars", math.MinInt32, "avoid comparing the first N characters")
 	unique := flag.Bool("u, unique", false, "only print unique lines")
@@ -120,6 +130,26 @@ func main() {
 	args := flag.Args()
 	uniqHead := uniq{}
 	uniqHead.init()
+
+	if *dup && *allRepeated == "" {
+		*allRepeated = "none"
+	}
+
+	if len(*group) > 0 {
+		checkGroup(*group)
+		if *count || *dup || *repeated || *unique {
+			die("uniq: --group is mutually exclusive with -c/-d/-D/-u")
+		}
+
+		switch *group {
+		case "prepend", "separate":
+			*allRepeated = *group
+		case "append":
+			*allRepeated = "separate"
+		case "both":
+			*allRepeated = "separate"
+		}
+	}
 
 	if len(*allRepeated) > 0 {
 		checkAllRepeated(*allRepeated)
@@ -171,6 +201,10 @@ func main() {
 		}
 
 		key := ""
+		if len(allLine) > 0 && *group == "both" {
+			w.Write([]byte{'\n'})
+		}
+
 		for _, l := range allLine {
 
 			key = getKey(l)
@@ -204,27 +238,29 @@ func main() {
 					continue
 				}
 			} else {
-				if ioCount.input == 1 {
+				if *group == "" && ioCount.input == 1 {
 					continue
 				}
+			}
+
+			if preLine != nil {
+				writeLine(w, append(preLine, '\n'))
+				preLine = nil
 			}
 
 			switch *allRepeated {
 			case "none":
 			case "prepend":
-				if ioCount.input > 1 && ioCount.output == 0 {
+				if ioCount.output == 0 {
 					l = append([]byte{'\n'}, l...)
 				}
 			case "separate":
-				if ioCount.input > 1 && ioCount.output == ioCount.input-1 {
+				if ioCount.output == ioCount.input-1 {
 
 					preLine = append([]byte{}, l...)
 					goto next
 				}
 
-				if preLine != nil {
-					writeLine(w, append(preLine, '\n'))
-				}
 			}
 
 			writeLine(w, l)
@@ -235,6 +271,9 @@ func main() {
 		}
 
 		if preLine != nil {
+			if *group == "append" || *group == "both" {
+				preLine = append(preLine, '\n')
+			}
 			writeLine(w, preLine)
 		}
 	}
