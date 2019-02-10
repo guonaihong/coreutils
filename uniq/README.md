@@ -15,14 +15,17 @@ env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/uniq
 
 ```console
 Usage of ./uniq:
-  -D, --all-repeated string
-        print all duplicate lines delimit-method={none(default),prepend,separate} Delimiting is done with blank lines
+  -D    print all duplicate lines
+  -all-repeated string
+        like -D, but allow separating groups with an empty line; METHOD={none(default),prepend,separate}
   -c, --count
         prefix lines by the number of occurrences
   -d, --repeated
         only print duplicate lines
   -f, --skip-fields int
         avoid comparing the first N fields (default -2147483648)
+  -group string
+        show all items, separating groups with an empty line; METHOD={separate(default),prepend,append,both}
   -i, --ignore-case
         ignore differences in case when comparing
   -s, --skip-chars int
