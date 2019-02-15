@@ -22,9 +22,9 @@ type joinCmd struct {
 	key2            *int
 	printUnpairable *int
 	separator       *string
-
-	r1, r2 io.Reader
-	w      io.Writer
+	ignoreCase      *bool
+	r1, r2          io.Reader
+	w               io.Writer
 }
 
 func (j *joinCmd) addOutLine(outLine *bytes.Buffer, ls [][]byte, key int) {
@@ -41,19 +41,64 @@ func (j *joinCmd) addOutLine(outLine *bytes.Buffer, ls [][]byte, key int) {
 
 func (j *joinCmd) getField(l1, l2 []byte) {
 	delEndLineDelim(&l1)
-	ls1 := bytes.Split(l1, []byte(*j.separator))
-	ls2 := bytes.Split(l2, []byte(*j.separator))
+	split := bytes.Split
+
+	var vals [2][]byte
+	var lineWord [2][][]byte
+	var keys [2]int
+
+	lineWord[0] = split(l1, []byte(*j.separator))
+	lineWord[1] = split(l2, []byte(*j.separator))
+
 	outLine := bytes.NewBuffer(nil)
 
-	key1 := *j.key1 - 1
-	key2 := *j.key2 - 1
-	if bytes.Equal(ls1[key1], ls2[key2]) {
-		outLine.Write(ls1[key1])
+	/*
+		isBytesIndex := func(index int, b []byte) bool {
+			return index >= 0 && index < len(b)
+		}
+	*/
+
+	isBytesBytesIndex := func(index int, bb [][]byte) bool {
+		return index >= 0 && index < len(bb)
+	}
+
+	key1, key2 := *j.key1-1, *j.key2-1
+	keys[0], keys[1] = key1, key2
+
+	if isBytesBytesIndex(key1, lineWord[0]) {
+		vals[0] = lineWord[0][key1]
+	}
+
+	if isBytesBytesIndex(key2, lineWord[1]) {
+		vals[1] = lineWord[1][key2]
+	}
+
+	if *j.ignoreCase {
+		vals[0], vals[1] = bytes.ToUpper(vals[0]), bytes.ToUpper(vals[1])
+	}
+
+	printUnpairable := *j.printUnpairable - 1
+	if bytes.Equal(vals[0], vals[1]) {
+		outLine.Write(lineWord[0][key1])
 		outLine.WriteString(*j.separator)
 
-		j.addOutLine(outLine, ls1, key1)
-		j.addOutLine(outLine, ls2, key2)
-		line := outLine.Bytes()
+		j.addOutLine(outLine, lineWord[0], key1)
+		j.addOutLine(outLine, lineWord[1], key2)
+		goto write
+	}
+
+	switch *j.printUnpairable {
+	case 0, 1:
+		if isBytesBytesIndex(keys[printUnpairable], lineWord[printUnpairable]) {
+			outLine.Write(lineWord[printUnpairable][key1])
+			outLine.WriteString(*j.separator)
+			j.addOutLine(outLine, lineWord[printUnpairable], keys[printUnpairable])
+		}
+	}
+
+write:
+	line := outLine.Bytes()
+	if len(line) > 0 {
 		j.w.Write(line[:len(line)-len(*j.separator)])
 	}
 }
@@ -97,7 +142,7 @@ func Main(argv []string) {
 	cmdOpt.printUnpairable = command.Int("a", 0, "also print unpairable lines from file FILENUM, "+
 		"where FILENUM is 1 or 2, corresponding to FILE1 or FILE2")
 	command.String("e", "", "replace missing input fields with EMPTY")
-	command.Bool("i, ignore-case", false, "ignore differences in case "+
+	cmdOpt.ignoreCase = command.Bool("i, ignore-case", false, "ignore differences in case "+
 		"when comparing fields")
 	command.Int("j", 0, "equivalent to '-1 FIELD -2 FIELD'")
 	command.StringSlice("o", []string{}, "obey FORMAT while constructing output line")
