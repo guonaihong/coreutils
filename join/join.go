@@ -12,7 +12,7 @@ import (
 var lineDelim byte = '\n'
 
 func delEndLineDelim(l *[]byte) {
-	if (*l)[len(*l)-1] == lineDelim {
+	if len(*l) > 0 && (*l)[len(*l)-1] == lineDelim {
 		*l = (*l)[:len(*l)-1]
 	}
 }
@@ -23,17 +23,22 @@ type joinCmd struct {
 	printUnpairable *int
 	separator       *string
 	ignoreCase      *bool
+	empty           *string
 	r1, r2          io.Reader
 	w               io.Writer
 }
 
-func (j *joinCmd) addOutLine(outLine *bytes.Buffer, ls [][]byte, key int) {
+func (j *joinCmd) addOutLine(outLine *bytes.Buffer, ls [][]byte, key int, writeLastSeparator bool) {
 	for k, v := range ls {
 		if k == key {
 			continue
 		}
 
 		outLine.Write(v)
+		if !writeLastSeparator && k+1 == len(ls) {
+			return
+		}
+
 		outLine.WriteString(*j.separator)
 	}
 
@@ -41,6 +46,7 @@ func (j *joinCmd) addOutLine(outLine *bytes.Buffer, ls [][]byte, key int) {
 
 func (j *joinCmd) getField(l1, l2 []byte) {
 	delEndLineDelim(&l1)
+	delEndLineDelim(&l2)
 	split := bytes.Split
 
 	var vals [2][]byte
@@ -82,8 +88,8 @@ func (j *joinCmd) getField(l1, l2 []byte) {
 		outLine.Write(lineWord[0][key1])
 		outLine.WriteString(*j.separator)
 
-		j.addOutLine(outLine, lineWord[0], key1)
-		j.addOutLine(outLine, lineWord[1], key2)
+		j.addOutLine(outLine, lineWord[0], key1, true)
+		j.addOutLine(outLine, lineWord[1], key2, false)
 		goto write
 	}
 
@@ -92,14 +98,15 @@ func (j *joinCmd) getField(l1, l2 []byte) {
 		if isBytesBytesIndex(keys[printUnpairable], lineWord[printUnpairable]) {
 			outLine.Write(lineWord[printUnpairable][key1])
 			outLine.WriteString(*j.separator)
-			j.addOutLine(outLine, lineWord[printUnpairable], keys[printUnpairable])
+			j.addOutLine(outLine, lineWord[printUnpairable], keys[printUnpairable], false)
 		}
 	}
 
 write:
+	outLine.WriteByte('\n')
 	line := outLine.Bytes()
 	if len(line) > 0 {
-		j.w.Write(line[:len(line)-len(*j.separator)])
+		j.w.Write(line)
 	}
 }
 
@@ -141,7 +148,7 @@ func Main(argv []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 	cmdOpt.printUnpairable = command.Int("a", 0, "also print unpairable lines from file FILENUM, "+
 		"where FILENUM is 1 or 2, corresponding to FILE1 or FILE2")
-	command.String("e", "", "replace missing input fields with EMPTY")
+	cmdOpt.empty = command.String("e", "", "replace missing input fields with EMPTY")
 	cmdOpt.ignoreCase = command.Bool("i, ignore-case", false, "ignore differences in case "+
 		"when comparing fields")
 	command.Int("j", 0, "equivalent to '-1 FIELD -2 FIELD'")
