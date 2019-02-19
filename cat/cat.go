@@ -1,4 +1,4 @@
-package main
+package cat
 
 import (
 	"bufio"
@@ -10,14 +10,15 @@ import (
 	"strings"
 )
 
-func main() {
-	numberNonblank := flag.Bool("b, number-nonblank", false, "number nonempty output lines")
-	showEnds := flag.Bool("E, show-ends", false, "display $ at end of each line")
-	number := flag.Bool("n, number", false, "number all output lines")
-	squeezeBlank := flag.Bool("s, squeeze-blank", false, "suppress repeated empty output lines")
-	showTables := flag.Bool("T, show-tables", false, "display TAB characters as ^I")
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	numberNonblank := command.Bool("b, number-nonblank", false, "number nonempty output lines")
+	showEnds := command.Bool("E, show-ends", false, "display $ at end of each line")
+	number := command.Bool("n, number", false, "number all output lines")
+	squeezeBlank := command.Bool("s, squeeze-blank", false, "suppress repeated empty output lines")
+	showTables := command.Bool("T, show-tables", false, "display TAB characters as ^I")
 
-	flag.Parse()
+	command.Parse(argv[1:])
 
 	var oldNew []string
 
