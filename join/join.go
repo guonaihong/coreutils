@@ -29,6 +29,7 @@ type joinCmd struct {
 }
 
 func (j *joinCmd) addOutLine(outLine *bytes.Buffer, ls [][]byte, key int, writeLastSeparator bool) {
+
 	for k, v := range ls {
 		if k == key {
 			continue

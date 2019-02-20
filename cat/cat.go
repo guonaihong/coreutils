@@ -75,7 +75,7 @@ func Main(argv []string) {
 		}
 	}
 
-	args := flag.Args()
+	args := command.Args()
 	if len(args) > 0 {
 		for _, fileName := range args {
 			f, err := os.Open(fileName)

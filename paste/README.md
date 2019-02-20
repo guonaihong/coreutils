@@ -5,7 +5,7 @@ paste 在部分完成gnu paste 功能命令基础上，主要解决gnu paste一�
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/paste
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/paste/paste
 ```
 
 #### 命令行选项

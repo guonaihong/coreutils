@@ -1,4 +1,4 @@
-package main
+package uniq
 
 import (
 	"bufio"
@@ -56,6 +56,7 @@ func getCheckChars(checkChars int, l []byte) []byte {
 	}
 	return l
 }
+
 func openInputFd(fileName string) (*os.File, error) {
 	if fileName == "-" {
 		return os.Stdin, nil
@@ -112,22 +113,24 @@ func writeLine(w io.Writer, l []byte) {
 	w.Write(l)
 }
 
-func main() {
-	count := flag.Bool("c, count", false, "prefix lines by the number of occurrences")
-	repeated := flag.Bool("d, repeated", false, "only print duplicate lines")
-	dup := flag.Bool("D", false, "print all duplicate lines")
-	allRepeated := flag.String("all-repeated", "", "like -D, but allow separating groups with an empty line; METHOD={none(default),prepend,separate}")
-	skipFields := flag.Int("f, skip-fields", math.MinInt32, "avoid comparing the first N fields")
-	group := flag.String("group", "", "show all items, separating groups with an empty line; METHOD={separate(default),prepend,append,both}")
-	ignoreCase := flag.Bool("i, ignore-case", false, "ignore differences in case when comparing")
-	skipChars := flag.Int("s, skip-chars", math.MinInt32, "avoid comparing the first N characters")
-	unique := flag.Bool("u, unique", false, "only print unique lines")
-	zeroTerminated := flag.Bool("z, zero-terminated", false, "end lines with 0 byte, not newline")
-	checkChars := flag.Int("w, check-chars", math.MinInt32, "compare no more than N characters in lines")
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 
-	flag.Parse()
+	count := command.Bool("c, count", false, "prefix lines by the number of occurrences")
+	repeated := command.Bool("d, repeated", false, "only print duplicate lines")
+	dup := command.Bool("D", false, "print all duplicate lines")
+	allRepeated := command.String("all-repeated", "", "like -D, but allow separating groups with an empty line; METHOD={none(default),prepend,separate}")
+	skipFields := command.Int("f, skip-fields", math.MinInt32, "avoid comparing the first N fields")
+	group := command.String("group", "", "show all items, separating groups with an empty line; METHOD={separate(default),prepend,append,both}")
+	ignoreCase := command.Bool("i, ignore-case", false, "ignore differences in case when comparing")
+	skipChars := command.Int("s, skip-chars", math.MinInt32, "avoid comparing the first N characters")
+	unique := command.Bool("u, unique", false, "only print unique lines")
+	zeroTerminated := command.Bool("z, zero-terminated", false, "end lines with 0 byte, not newline")
+	checkChars := command.Int("w, check-chars", math.MinInt32, "compare no more than N characters in lines")
 
-	args := flag.Args()
+	command.Parse(argv[1:])
+
+	args := command.Args()
 	uniqHead := uniq{}
 	uniqHead.init()
 

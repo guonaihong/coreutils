@@ -1,4 +1,4 @@
-package main
+package paste
 
 import (
 	"bufio"
@@ -8,11 +8,12 @@ import (
 	"sync"
 )
 
-func main() {
-	delim := flag.String("d, delimiters", "\t", "reuse characters from LIST instead of TABs")
-	flag.Parse()
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	delim := command.String("d, delimiters", "\t", "reuse characters from LIST instead of TABs")
+	command.Parse(argv[1:])
 
-	args := flag.Args()
+	args := command.Args()
 
 	wg := sync.WaitGroup{}
 

@@ -1,4 +1,4 @@
-package main
+package tr
 
 import (
 	"bufio"
@@ -346,15 +346,16 @@ func (t *tr) getComplement(b byte) byte {
 	panic(fmt.Sprintf("unkown error:%c", b))
 }
 
-func main() {
-	complement := flag.Bool("c, C, complement", false, "use the complement of SET1")
-	delete := flag.Bool("d, delete", false, "delete characters in SET1, do not translate")
-	squeezeRepeats := flag.Bool("s, squeeze-repeats", false, "replace each sequence of a repeated character that is listed in the last specified SET, with a single occurrence of that character")
-	truncateSet1 := flag.Bool("t, truncate-set1", false, "first truncate SET1 to length of SET2")
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	complement := command.Bool("c, C, complement", false, "use the complement of SET1")
+	delete := command.Bool("d, delete", false, "delete characters in SET1, do not translate")
+	squeezeRepeats := command.Bool("s, squeeze-repeats", false, "replace each sequence of a repeated character that is listed in the last specified SET, with a single occurrence of that character")
+	truncateSet1 := command.Bool("t, truncate-set1", false, "first truncate SET1 to length of SET2")
 
-	flag.Parse()
+	command.Parse(argv[1:])
 
-	args := flag.Args()
+	args := command.Args()
 
 	var set1, set2 string
 	if len(args) >= 1 {

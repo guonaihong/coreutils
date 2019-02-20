@@ -5,7 +5,7 @@ uniq
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/uniq
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/uniq/uniq
 ```
 
 #### diff
