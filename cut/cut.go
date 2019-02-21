@@ -1,4 +1,4 @@
-package main
+package cut
 
 import (
 	"bufio"
@@ -96,19 +96,20 @@ func (f *filterCtrl) check(index int) (ok bool) {
 	return ok
 }
 
-func main() {
-	bytes0 := flag.String("b, bytes", "", "select only these bytes")
-	characters := flag.String("c, characters", "", "select only these characters")
-	delimiter := flag.String("d, delimiter", "\t", "use DELIM instead of TAB for field delimiter")
-	fields := flag.String("f, fields", "", "select only these fields;  also print any line that contains no delimiter character, unless the -s option is specified")
-	complement := flag.Bool("complement", false, "complement the set of selected bytes, characters or fields")
-	onlyDelimited := flag.Bool("s, only-delimited", false, "do not print lines not containing delimiters")
-	outputDelimiter := flag.String("output-delimiter", "", "use STRING as the output delimiter the default is to use the input delimiter")
-	zeroTerminated := flag.Bool("zero-terminated", false, "line delimiter is NUL, not newline")
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	bytes0 := command.String("b, bytes", "", "select only these bytes")
+	characters := command.String("c, characters", "", "select only these characters")
+	delimiter := command.String("d, delimiter", "\t", "use DELIM instead of TAB for field delimiter")
+	fields := command.String("f, fields", "", "select only these fields;  also print any line that contains no delimiter character, unless the -s option is specified")
+	complement := command.Bool("complement", false, "complement the set of selected bytes, characters or fields")
+	onlyDelimited := command.Bool("s, only-delimited", false, "do not print lines not containing delimiters")
+	outputDelimiter := command.String("output-delimiter", "", "use STRING as the output delimiter the default is to use the input delimiter")
+	zeroTerminated := command.Bool("zero-terminated", false, "line delimiter is NUL, not newline")
 
-	flag.Parse()
+	command.Parse(argv[1:])
 
-	args := flag.Args()
+	args := command.Args()
 
 	lineDelim := byte('\n')
 

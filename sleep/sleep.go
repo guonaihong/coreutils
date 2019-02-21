@@ -1,4 +1,4 @@
-package main
+package sleep
 
 import (
 	"fmt"
@@ -7,16 +7,17 @@ import (
 	"time"
 )
 
-func main() {
-	version := flag.Bool("version", false, "output version information and exit")
-	flag.Parse()
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	version := command.Bool("version", false, "output version information and exit")
+	command.Parse(argv[1:])
 
 	if *version {
 		fmt.Printf("todo: output version\n")
 		os.Exit(0)
 	}
 
-	args := flag.Args()
+	args := command.Args()
 	sleepCore := func(arg string) {
 
 		i := 0

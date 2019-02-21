@@ -1,4 +1,4 @@
-package main
+package basename
 
 import (
 	"bytes"
@@ -8,13 +8,14 @@ import (
 	"strings"
 )
 
-func main() {
-	multiple := flag.Bool("a, multiple", false, "support multiple arguments and treat each as a NAME")
-	suffix := flag.String("s, suffix", "", "remove a trailing SUFFIX; implies -a")
-	zero := flag.Bool("z, zero", false, "end each output line with NUL, not newline")
-	flag.Parse()
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	multiple := command.Bool("a, multiple", false, "support multiple arguments and treat each as a NAME")
+	suffix := command.String("s, suffix", "", "remove a trailing SUFFIX; implies -a")
+	zero := command.Bool("z, zero", false, "end each output line with NUL, not newline")
+	command.Parse(argv[1:])
 
-	args := flag.Args()
+	args := command.Args()
 
 	var out bytes.Buffer
 

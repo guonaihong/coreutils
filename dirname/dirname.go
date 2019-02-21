@@ -1,4 +1,4 @@
-package main
+package dirname
 
 import (
 	"bytes"
@@ -8,18 +8,19 @@ import (
 	"path/filepath"
 )
 
-func main() {
-	zero := flag.Bool("z, zero", false, "end each output line with NUL, not newline")
-	verion := flag.Bool("version", false, "output version information and exit")
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	zero := command.Bool("z, zero", false, "end each output line with NUL, not newline")
+	verion := command.Bool("version", false, "output version information and exit")
 
-	flag.Parse()
+	command.Parse(argv[1:])
 
 	if *verion {
 		fmt.Printf("todo output version \n")
 		os.Exit(0)
 	}
 
-	args := flag.Args()
+	args := command.Args()
 	out := bytes.Buffer{}
 
 	for _, v := range args {

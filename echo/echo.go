@@ -1,4 +1,4 @@
-package main
+package echo
 
 import (
 	"fmt"
@@ -57,13 +57,14 @@ func isxdigitStr(s string, max int) (i int, haveHex bool) {
 	return i, haveHex
 }
 
-func main() {
-	newLine := flag.Bool("n", false, "do not output the trailing newline")
-	enable := flag.Bool("e", false, "enable interpretation of backslash escapes")
-	disable := flag.Bool("E", true, "disable interpretation of backslash escapes (default)")
-	flag.Parse()
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	newLine := command.Bool("n", false, "do not output the trailing newline")
+	enable := command.Bool("e", false, "enable interpretation of backslash escapes")
+	disable := command.Bool("E", true, "disable interpretation of backslash escapes (default)")
+	command.Parse(argv[1:])
 
-	args := flag.Args()
+	args := command.Args()
 
 	c0 := uint64(0)
 	var err error

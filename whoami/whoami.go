@@ -1,11 +1,11 @@
-package main
+package whoami
 
 import (
 	"fmt"
 	"os/user"
 )
 
-func main() {
+func Main(argv []string) {
 	user, err := user.Current()
 	if err != nil {
 		panic(err)

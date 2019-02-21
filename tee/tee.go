@@ -1,4 +1,4 @@
-package main
+package tee
 
 import (
 	"fmt"
@@ -49,14 +49,15 @@ func ignore() {
 	signal.Ignore(syscall.SIGXFSZ)
 }
 
-func main() {
-	append := flag.Bool("a, append", false, "append to the given FILEs, do not overwrite")
-	ignoreInterrupts := flag.Bool("i, ignore-interrupts", false, "ignore interrupt signals") //todo
-	gzip := flag.Bool("g, gzip", false, "compressed archived log files")
-	maxSize := flag.String("s, max-size", "0", "current file maximum write size")
-	maxArchive := flag.Int("A, max-archive", 0, "How many archive files are saved")
+func Main(argv []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+	append := command.Bool("a, append", false, "append to the given FILEs, do not overwrite")
+	ignoreInterrupts := command.Bool("i, ignore-interrupts", false, "ignore interrupt signals") //todo
+	gzip := command.Bool("g, gzip", false, "compressed archived log files")
+	maxSize := command.String("s, max-size", "0", "current file maximum write size")
+	maxArchive := command.Int("A, max-archive", 0, "How many archive files are saved")
 
-	flag.Parse()
+	command.Parse(argv[1:])
 
 	var fileArch *log.File
 	var buffer [4096]byte
@@ -67,7 +68,7 @@ func main() {
 		ignore()
 	}
 
-	args := flag.Args()
+	args := command.Args()
 	if len(args) == 0 {
 		w = os.Stdout
 		goto end

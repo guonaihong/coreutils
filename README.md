@@ -9,7 +9,6 @@ coreutils项目是gnu coreutils的扩展
 * cut [详情](./cut/README.md)
 * dirname [详情](./dirname/README.md)
 * echo [详情](./echo/README.md)
-* mv [详情](./mv/README.md) todo
 * paste [详情](./paste/README.md)
 * tee [详情](./tee/README.md)
 * tr [详情](./tr/README.md)
