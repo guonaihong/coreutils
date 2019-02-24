@@ -5,7 +5,7 @@ tr 使用gnu的命令行选项
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/tr
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/tr/tr
 ```
 
 #### Example

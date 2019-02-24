@@ -10,9 +10,11 @@ env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/paste/paste
 
 #### 命令行选项
 ```console
-Usage of paste:
+Usage of ./paste:
   -d, --delimiters string
-    	reuse characters from LIST instead of TABs (default "\t")
+        reuse characters from LIST instead of TABs
+  -z, --zero-terminated
+        line delimiter is NUL, not newline
 ```
 
 #### gnu paste 诡异问题

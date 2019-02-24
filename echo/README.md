@@ -5,7 +5,7 @@ echo
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/echo
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/echo/echo
 ```
 
 #### 命令行选项

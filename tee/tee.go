@@ -51,11 +51,21 @@ func ignore() {
 
 func Main(argv []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
-	append := command.Bool("a, append", false, "append to the given FILEs, do not overwrite")
-	ignoreInterrupts := command.Bool("i, ignore-interrupts", false, "ignore interrupt signals") //todo
-	gzip := command.Bool("g, gzip", false, "compressed archived log files")
-	maxSize := command.String("s, max-size", "0", "current file maximum write size")
-	maxArchive := command.Int("A, max-archive", 0, "How many archive files are saved")
+
+	append := command.Opt("a, append", "append to the given FILEs, do not overwrite").
+		Flags(flag.PosixShort).NewBool(false)
+
+	ignoreInterrupts := command.Opt("i, ignore-interrupts", "ignore interrupt signals").
+		Flags(flag.PosixShort).NewBool(false)
+
+	gzip := command.Opt("g, gzip", "compressed archived log files").
+		Flags(flag.PosixShort).NewBool(false)
+
+	maxSize := command.Opt("s, max-size", "current file maximum write size").
+		NewString("0")
+
+	maxArchive := command.Opt("A, max-archive", "How many archive files are saved").
+		NewInt64(0)
 
 	command.Parse(argv[1:])
 
@@ -89,7 +99,7 @@ func Main(argv []string) {
 			compress = log.Gzip
 		}
 
-		fileArch = log.NewFile("", fileName, compress, int(size), *maxArchive)
+		fileArch = log.NewFile("", fileName, compress, int(size), int(*maxArchive))
 
 		w = fileArch
 	} else {

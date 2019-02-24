@@ -10,9 +10,16 @@ import (
 
 func Main(argv []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
-	multiple := command.Bool("a, multiple", false, "support multiple arguments and treat each as a NAME")
-	suffix := command.String("s, suffix", "", "remove a trailing SUFFIX; implies -a")
-	zero := command.Bool("z, zero", false, "end each output line with NUL, not newline")
+
+	multiple := command.Opt("a, multiple", "support multiple arguments and treat each as a NAME").
+		Flags(flag.PosixShort).NewBool(false)
+
+	suffix := command.Opt("s, suffix", "remove a trailing SUFFIX; implies -a").
+		NewString("")
+
+	zero := command.Opt("z, zero", "end each output line with NUL, not newline").
+		Flags(flag.PosixShort).NewBool(false)
+
 	command.Parse(argv[1:])
 
 	args := command.Args()

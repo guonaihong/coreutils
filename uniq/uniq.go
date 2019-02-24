@@ -116,17 +116,39 @@ func writeLine(w io.Writer, l []byte) {
 func Main(argv []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 
-	count := command.Bool("c, count", false, "prefix lines by the number of occurrences")
-	repeated := command.Bool("d, repeated", false, "only print duplicate lines")
-	dup := command.Bool("D", false, "print all duplicate lines")
-	allRepeated := command.String("all-repeated", "", "like -D, but allow separating groups with an empty line; METHOD={none(default),prepend,separate}")
-	skipFields := command.Int("f, skip-fields", math.MinInt32, "avoid comparing the first N fields")
-	group := command.String("group", "", "show all items, separating groups with an empty line; METHOD={separate(default),prepend,append,both}")
-	ignoreCase := command.Bool("i, ignore-case", false, "ignore differences in case when comparing")
-	skipChars := command.Int("s, skip-chars", math.MinInt32, "avoid comparing the first N characters")
-	unique := command.Bool("u, unique", false, "only print unique lines")
-	zeroTerminated := command.Bool("z, zero-terminated", false, "end lines with 0 byte, not newline")
-	checkChars := command.Int("w, check-chars", math.MinInt32, "compare no more than N characters in lines")
+	count := command.Opt("c, count", "prefix lines by the number of occurrences").
+		Flags(flag.PosixShort).NewBool(false)
+
+	repeated := command.Opt("d, repeated", "only print duplicate lines").
+		Flags(flag.PosixShort).NewBool(false)
+
+	dup := command.Opt("D", "print all duplicate lines").
+		Flags(flag.PosixShort).NewBool(false)
+
+	allRepeated := command.Opt("all-repeated", "like -D, but allow separating groups with an empty line; \n"+
+		"METHOD={none(default),prepend,separate}").
+		NewString("")
+
+	skipFields := command.Opt("f, skip-fields", "avoid comparing the first N fields").
+		NewInt(math.MinInt32)
+
+	group := command.String("group", "", "show all items, separating groups with an empty line; \n"+
+		"METHOD={separate(default),prepend,append,both}")
+
+	ignoreCase := command.Opt("i, ignore-case", "ignore differences in case when comparing").
+		Flags(flag.PosixShort).NewBool(false)
+
+	skipChars := command.Opt("s, skip-chars", "avoid comparing the first N characters").
+		NewInt(math.MinInt32)
+
+	unique := command.Opt("u, unique", "only print unique lines").
+		Flags(flag.PosixShort).NewBool(false)
+
+	zeroTerminated := command.Opt("z, zero-terminated", "end lines with 0 byte, not newline").
+		Flags(flag.PosixShort).NewBool(false)
+
+	checkChars := command.Opt("w, check-chars", "compare no more than N characters in lines").
+		NewInt(math.MinInt32)
 
 	command.Parse(argv[1:])
 

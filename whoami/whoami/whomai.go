@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/guonaihong/coreuilts/whomai"
+	"github.com/guonaihong/coreutils/whoami"
 	"os"
 )
 
 func main() {
-	whoami.Main()
+	whoami.Main(os.Args)
 }

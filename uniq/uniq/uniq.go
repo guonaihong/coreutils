@@ -6,5 +6,5 @@ import (
 )
 
 func main() {
-	uniq.Main(os.Argv)
+	uniq.Main(os.Args)
 }

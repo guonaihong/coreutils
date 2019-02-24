@@ -9,15 +9,29 @@ import (
 )
 
 func Main(argv []string) {
+
+	var lineDelim = '\n'
+
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
-	delim := command.String("d, delimiters", "\t", "reuse characters from LIST instead of TABs")
+
+	delim := command.Opt("d, delimiters", "reuse characters from LIST instead of TABs").
+		NewString("\t")
+
+	zeroTerminated := command.Opt("z, zero-terminated", "line delimiter is NUL, not newline").
+		Flags(flag.PosixShort).NewBool(false)
+
 	command.Parse(argv[1:])
+
+	if *zeroTerminated {
+		lineDelim = '\000'
+	}
 
 	args := command.Args()
 
 	wg := sync.WaitGroup{}
 
 	wg.Add(len(args))
+
 	resultChan := make([]chan string, len(args))
 
 	for k, _ := range resultChan {
@@ -35,11 +49,19 @@ func Main(argv []string) {
 			if err != nil {
 				os.Exit(1)
 			}
+
 			defer file.Close()
 
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				resultChan[id] <- scanner.Text()
+			br := bufio.NewReader(file)
+
+			for {
+
+				l, err := br.ReadBytes(byte(lineDelim))
+				if err != nil && len(l) == 0 {
+					break
+				}
+
+				resultChan[id] <- string(l)
 			}
 
 		}(id, fileName)

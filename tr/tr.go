@@ -348,10 +348,19 @@ func (t *tr) getComplement(b byte) byte {
 
 func Main(argv []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
-	complement := command.Bool("c, C, complement", false, "use the complement of SET1")
-	delete := command.Bool("d, delete", false, "delete characters in SET1, do not translate")
-	squeezeRepeats := command.Bool("s, squeeze-repeats", false, "replace each sequence of a repeated character that is listed in the last specified SET, with a single occurrence of that character")
-	truncateSet1 := command.Bool("t, truncate-set1", false, "first truncate SET1 to length of SET2")
+	complement := command.Opt("c, C, complement", "use the complement of SET1").
+		Flags(flag.PosixShort).NewBool(false)
+
+	delete := command.Opt("d, delete", "delete characters in SET1, do not translate").
+		Flags(flag.PosixShort).NewBool(false)
+
+	squeezeRepeats := command.Opt("s, squeeze-repeats", "replace each sequence of a "+
+		"repeated character that is listed in the last specified SET, with a single "+
+		"occurrence of that character").
+		Flags(flag.PosixShort).NewBool(false)
+
+	truncateSet1 := command.Opt("t, truncate-set1", "first truncate SET1 to length of SET2").
+		Flags(flag.PosixShort).NewBool(false)
 
 	command.Parse(argv[1:])
 

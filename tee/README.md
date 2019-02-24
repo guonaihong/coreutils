@@ -5,7 +5,7 @@ tee 在完成gnu tee 功能命令基础上，并增强tee命令。
 
 #### install
 ```bash
-env GOPATH=`pwd` go get -u github.com/guonaihong/tee
+env GOPATH=`pwd` go get -u github.com/guonaihong/tee/tee
 ```
 
 #### 命令行选项
@@ -30,7 +30,7 @@ do
 done
 ```
 
-* tee命令保证始终只有10个归档文件(.gz)
+* tee命令保证始终只有10个归档文件(.gz), 超过1M自动归档
 ```bash
-bash loop.sh | tee -A 10 -g -a my.log
+bash loop.sh | tee -A 10 -ga my.log -s 1M
 ```

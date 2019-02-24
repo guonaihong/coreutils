@@ -59,9 +59,16 @@ func isxdigitStr(s string, max int) (i int, haveHex bool) {
 
 func Main(argv []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
-	newLine := command.Bool("n", false, "do not output the trailing newline")
-	enable := command.Bool("e", false, "enable interpretation of backslash escapes")
-	disable := command.Bool("E", true, "disable interpretation of backslash escapes (default)")
+
+	newLine := command.Opt("n", "do not output the trailing newline").
+		Flags(flag.PosixShort).NewBool(false)
+
+	enable := command.Opt("e", "enable interpretation of backslash escapes").
+		Flags(flag.PosixShort).NewBool(false)
+
+	disable := command.Opt("E", "disable interpretation of backslash escapes (default)").
+		Flags(flag.PosixShort).NewBool(false)
+
 	command.Parse(argv[1:])
 
 	args := command.Args()
@@ -77,7 +84,7 @@ func Main(argv []string) {
 
 	if *enable {
 		printSlash := false
-		for _, s := range args {
+		for k, s := range args {
 			for i := 0; i < len(s); i++ {
 				c := s[i]
 
@@ -167,7 +174,9 @@ func Main(argv []string) {
 				// in c  putchar(172)            -->  ?
 				os.Stdout.Write([]byte{c})
 			}
-			fmt.Print(" ")
+			if k+1 != len(args) {
+				fmt.Print(" ")
+			}
 		}
 		return
 	}
