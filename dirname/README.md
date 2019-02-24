@@ -5,7 +5,7 @@ dirname
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/dirname
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/dirname/dirname
 ```
 
 #### 命令行选项

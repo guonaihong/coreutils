@@ -5,7 +5,7 @@ sleep
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/sleep
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/sleep/sleep
 ```
 
 #### 命令行选项

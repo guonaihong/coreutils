@@ -5,7 +5,7 @@ cut
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/cut
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/cut/cut
 ```
 
 #### 命令行选项

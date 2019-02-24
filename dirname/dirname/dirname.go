@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/guonaihong/coreuilts/dirname"
+	"github.com/guonaihong/coreutils/dirname"
 	"os"
 )
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"githug.com/guonaihong/coreutils/cut"
+	"github.com/guonaihong/coreutils/cut"
 	"os"
 )
 

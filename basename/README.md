@@ -5,7 +5,7 @@ basename
 
 #### install
 ```bash
-env GOPATH=`pwd` go get -u github.com/guonaihong/basename
+env GOPATH=`pwd` go get -u github.com/guonaihong/basename/basename
 ```
 
 #### 命令行选项

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"githug.com/guonaihong/coreutils/yes"
+	"github.com/guonaihong/coreutils/yes"
 	"os"
 )
 

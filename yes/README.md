@@ -5,5 +5,5 @@ yes
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/yes
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/yes/yes
 ```
