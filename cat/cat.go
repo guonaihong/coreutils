@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
 	"os"
@@ -65,7 +66,7 @@ func Main(argv []string) {
 		Flags(flag.PosixShort).NewBool(false)
 
 	showNonprinting := command.Opt("v, show-nonprinting",
-		"use ^ and M- notation, except for LFD and TAB, ").
+		"use ^ and M- notation, except for LFD and TAB").
 		Flags(flag.PosixShort).NewBool(false)
 
 	command.Parse(argv[1:])
@@ -145,14 +146,13 @@ func Main(argv []string) {
 	args := command.Args()
 	if len(args) > 0 {
 		for _, fileName := range args {
-			f, err := os.Open(fileName)
+			f, err := utils.OpenInputFd(fileName)
 			if err != nil {
-				fmt.Printf("cat: %s\n", err)
-				os.Exit(1)
+				utils.Die("cat: %s\n", err)
 			}
 
 			catCore(f)
-			f.Close()
+			utils.CloseInputFd(f)
 		}
 		return
 	}
