@@ -10,23 +10,89 @@ import (
 	"strings"
 )
 
+func writeNonblank(l []byte) []byte {
+	var out bytes.Buffer
+
+	for _, c := range l {
+		switch {
+		case c == 9: // '\t'
+			out.WriteByte(c)
+		case c >= 0 && c <= 8 || c > 10 && c <= 31:
+			out.Write([]byte{'^', c + 64})
+		case c >= 32 && c <= 126 || c == 10: // 10 is '\n'
+			out.WriteByte(c)
+		case c == 127:
+			out.Write([]byte{'^', c - 64})
+		case c >= 128 && c <= 159:
+			out.Write([]byte{'M', '-', '^', c - 64})
+		case c >= 160 && c <= 254:
+			out.Write([]byte{'M', '-', c - 128})
+		default:
+			out.Write([]byte{'M', '-', '^', 63})
+		}
+	}
+
+	return out.Bytes()
+}
+
 func Main(argv []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
-	numberNonblank := command.Bool("b, number-nonblank", false, "number nonempty output lines")
-	showEnds := command.Bool("E, show-ends", false, "display $ at end of each line")
-	number := command.Bool("n, number", false, "number all output lines")
-	squeezeBlank := command.Bool("s, squeeze-blank", false, "suppress repeated empty output lines")
-	showTables := command.Bool("T, show-tables", false, "display TAB characters as ^I")
+
+	showAll := command.Opt("A, show-all", "equivalent to -vET").
+		Flags(flag.PosixShort).NewBool(false)
+
+	numberNonblank := command.Opt("b, number-nonblank",
+		"number nonempty output lines, overrides -n").
+		Flags(flag.PosixShort).NewBool(false)
+
+	e := command.Opt("e", "equivalent to -vE").
+		Flags(flag.PosixShort).NewBool(false)
+
+	showEnds := command.Opt("E, show-end", "display $ at end of each line").
+		Flags(flag.PosixShort).NewBool(false)
+
+	number := command.Opt("n, numbe", "number all output line").
+		Flags(flag.PosixShort).NewBool(false)
+
+	squeezeBlank := command.Opt("s, squeeze-blank",
+		"suppress repeated empty output lines").
+		Flags(flag.PosixShort).NewBool(false)
+
+	t := command.Opt("t", "equivalent to -vT").
+		Flags(flag.PosixShort).NewBool(false)
+
+	showTabs := command.Opt("T, show-tabs", "display TAB characters as ^I").
+		Flags(flag.PosixShort).NewBool(false)
+
+	showNonprinting := command.Opt("v, show-nonprinting",
+		"use ^ and M- notation, except for LFD and TAB, ").
+		Flags(flag.PosixShort).NewBool(false)
 
 	command.Parse(argv[1:])
 
 	var oldNew []string
 
+	if *showAll {
+		*showNonprinting = true
+		*showEnds = true
+		*showTabs = true
+	}
+
+	if *e {
+		*showNonprinting = true
+		*showEnds = true
+	}
+
+	if *t {
+		*showNonprinting = true
+		*showTabs = true
+	}
+
 	if *showEnds {
 		oldNew = append(oldNew, "\n", "$\n")
 	}
 
-	if *showTables {
+	if *showTabs {
 		oldNew = append(oldNew, "\t", "^I")
 	}
 
@@ -58,6 +124,10 @@ func Main(argv []string) {
 				l = []byte(replacer.Replace(string(l)))
 			}
 
+			if *showNonprinting {
+				l = writeNonblank(l)
+			}
+
 			if *numberNonblank || *number {
 				if *numberNonblank {
 					count--
@@ -69,9 +139,6 @@ func Main(argv []string) {
 			}
 
 			os.Stdout.Write(l)
-			if e != nil {
-				break
-			}
 		}
 	}
 
