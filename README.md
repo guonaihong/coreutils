@@ -3,12 +3,18 @@
 ## 简介
 coreutils项目是gnu coreutils的扩展
 
+## install
+```
+env GOPATH=`pwd` go get github.com/guonaihong/coreutils/coreutils
+```
+
 ## 已完成命令如下 
 * basename [详情](./basename/README.md)
 * cat [详情](./cat/README.md)
 * cut [详情](./cut/README.md)
 * dirname [详情](./dirname/README.md)
 * echo [详情](./echo/README.md)
+* head [详情](./head/README.md)
 * paste [详情](./paste/README.md)
 * tee [详情](./tee/README.md)
 * tr [详情](./tr/README.md)

@@ -2,34 +2,35 @@ package head
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
 	"os"
 )
 
-type head struct {
-	bytes     *int
-	lines     *int
-	quiet     *bool
-	verbose   *bool
-	lineDelim byte
+type Head struct {
+	Bytes     *int
+	Lines     *int
+	Quiet     *bool
+	Verbose   *bool
+	LineDelim byte
 }
 
-func newHead(argv []string) (*head, []string) {
+func New(argv []string) (*Head, []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 
-	h := head{}
+	h := Head{}
 
-	h.bytes = command.Opt("c, bytes", "print the first NUM bytes of each file;"+
+	h.Bytes = command.Opt("c, bytes", "print the first NUM bytes of each file;"+
 		" with the leading '-', print all but the last NUM bytes of each file").
 		Flags(flag.PosixShort).
 		NewInt(0)
 
-	h.lines = command.OptOpt(
+	h.Lines = command.OptOpt(
 		flag.Flag{
 			Regex: `^\d+$`,
-			Short: []string{"l"},
+			Short: []string{"n"},
 			Long:  []string{"lines"},
 			Usage: "print the first NUM lines instead of the first 10;" +
 				"with the leading '-', print all but the last" +
@@ -37,11 +38,11 @@ func newHead(argv []string) (*head, []string) {
 		Flags(flag.RegexKeyIsValue).
 		NewInt(10)
 
-	h.quiet = command.Opt("q, quiet, silent", "never print headers giving file names").
+	h.Quiet = command.Opt("q, quiet, silent", "never print headers giving file names").
 		Flags(flag.PosixShort).
 		NewBool(false)
 
-	h.verbose = command.Opt("v, verbose", "always print headers giving file names").
+	h.Verbose = command.Opt("v, verbose", "always print headers giving file names").
 		Flags(flag.PosixShort).
 		NewBool(false)
 
@@ -49,11 +50,12 @@ func newHead(argv []string) (*head, []string) {
 		Flags(flag.PosixShort).
 		NewBool(false)
 
-	if *zeroTerminated {
-		h.lineDelim = '\000'
-	}
-
 	command.Parse(argv[1:])
+
+	h.LineDelim = '\n'
+	if *zeroTerminated {
+		h.LineDelim = '\000'
+	}
 
 	args := command.Args()
 	if len(args) == 0 {
@@ -63,8 +65,8 @@ func newHead(argv []string) (*head, []string) {
 	return &h, args
 }
 
-func (h *head) printBytes(rs io.ReadSeeker, w io.Writer) {
-	size := *h.bytes
+func (h *Head) PrintBytes(rs io.ReadSeeker, w io.Writer) {
+	size := *h.Bytes
 	buf := make([]byte, 1024*8)
 
 	if size < 0 {
@@ -72,7 +74,7 @@ func (h *head) printBytes(rs io.ReadSeeker, w io.Writer) {
 			utils.Die("head: %s\n", err)
 			return
 		} else {
-			size = int(n) + *h.bytes
+			size = int(n) + *h.Bytes
 			rs.Seek(0, 0)
 		}
 
@@ -93,29 +95,31 @@ func (h *head) printBytes(rs io.ReadSeeker, w io.Writer) {
 	}
 }
 
-func (h *head) printLines(rs io.ReadSeeker, w io.Writer) {
+func (h *Head) PrintLines(rs io.ReadSeeker, w io.Writer) {
 	br := bufio.NewReader(rs)
 
-	lineNo := *h.lines
+	lineNo := 10
+	if h.Lines != nil {
+		lineNo = *h.Lines
+	}
+
 	if lineNo < 0 {
-		lineMap := map[int]int{}
 		no := 0
 		for no = 0; ; no++ {
-			l, e := br.ReadBytes(h.lineDelim)
-			if e == io.EOF {
+			l, e := br.ReadBytes(h.LineDelim)
+			if e != nil && len(l) == 0 {
 				break
 			}
 
-			no++
-			lineMap[no] = len(l) + lineMap[no-1]
 		}
 
-		lineNo = lineMap[no+lineNo]
+		rs.Seek(0, 0)
+		lineNo = no + lineNo
 	}
 
-	for i := 0; i < lineNo; {
-		l, e := br.ReadBytes(h.lineDelim)
-		if e == io.EOF {
+	for i := 0; i < lineNo; i++ {
+		l, e := br.ReadBytes(h.LineDelim)
+		if e != nil && len(l) == 0 {
 			break
 		}
 
@@ -123,18 +127,26 @@ func (h *head) printLines(rs io.ReadSeeker, w io.Writer) {
 	}
 }
 
-func (h *head) main(rs io.ReadSeeker, w io.Writer) {
-	if *h.bytes != 0 {
-		h.printBytes(rs, w)
+func (h *Head) main(rs io.ReadSeeker, w io.Writer, name string) {
+	if h.Verbose != nil && *h.Verbose {
+		h.PrintTitle(w, name)
+	}
+
+	if h.Bytes != nil && *h.Bytes != 0 {
+		h.PrintBytes(rs, w)
 		return
 	}
 
-	h.printLines(rs, w)
+	h.PrintLines(rs, w)
+}
+
+func (h *Head) PrintTitle(w io.Writer, name string) {
+	fmt.Fprintf(w, "==> %s <==\n", name)
 }
 
 func Main(argv []string) {
 
-	h, args := newHead(argv)
+	h, args := New(argv)
 
 	for _, v := range args {
 		fd, err := utils.OpenInputFd(v)
@@ -142,7 +154,7 @@ func Main(argv []string) {
 			utils.Die("head:%s\n", err)
 		}
 
-		h.main(fd, os.Stdout)
+		h.main(fd, os.Stdout, v)
 		utils.CloseInputFd(fd)
 	}
 }

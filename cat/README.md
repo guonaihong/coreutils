@@ -1,7 +1,7 @@
 # cat
 
 #### 简介
-cat 使用gnu的命令行选项(已适合到ubuntu 16.04)，在mac电脑上可以获得和linux 一样的体验
+cat 使用gnu的命令行选项(已适配到ubuntu 16.04)，在mac电脑上可以获得和linux 一样的体验
 
 #### install
 ```
