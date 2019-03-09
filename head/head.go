@@ -25,7 +25,7 @@ func New(argv []string) (*Head, []string) {
 	nbytes := command.Opt("c, bytes", "print the first NUM bytes of each file;"+
 		" with the leading '-', print all but the last NUM bytes of each file").
 		Flags(flag.PosixShort).
-		NewString("")
+		NewString("0")
 
 	h.Lines = command.OptOpt(
 		flag.Flag{
