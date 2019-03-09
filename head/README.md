@@ -13,7 +13,7 @@ env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/head/head
 Usage of ./head:
   -^\d+$, --n, --lines int
         print the first NUM lines instead of the first 10;with the leading '-', print all but the lastNUM lines of each file
-  -c, --bytes int
+  -c, --bytes string
         print the first NUM bytes of each file; with the leading '-', print all but the last NUM bytes of each file
   -q, --quiet, --silent
         never print headers giving file names

@@ -22,10 +22,10 @@ func New(argv []string) (*Head, []string) {
 
 	h := Head{}
 
-	h.Bytes = command.Opt("c, bytes", "print the first NUM bytes of each file;"+
+	nbytes := command.Opt("c, bytes", "print the first NUM bytes of each file;"+
 		" with the leading '-', print all but the last NUM bytes of each file").
 		Flags(flag.PosixShort).
-		NewInt(0)
+		NewString("")
 
 	h.Lines = command.OptOpt(
 		flag.Flag{
@@ -51,6 +51,13 @@ func New(argv []string) (*Head, []string) {
 		NewBool(false)
 
 	command.Parse(argv[1:])
+
+	n, err := utils.HeadParseSize(*nbytes)
+	if err != nil {
+		utils.Die("head:%s\n", err)
+	}
+
+	h.Bytes = n.IntPtr()
 
 	h.LineDelim = '\n'
 	if *zeroTerminated {
