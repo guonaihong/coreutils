@@ -11,6 +11,16 @@ import (
 	"strings"
 )
 
+type Cat struct {
+	NumberNonblank  *bool
+	ShowEnds        *bool
+	Number          *bool
+	SqueezeBlank    *bool
+	ShowTabs        *bool
+	ShowNonprinting *bool
+	oldNew          []string
+}
+
 func writeNonblank(l []byte) []byte {
 	var out bytes.Buffer
 
@@ -36,114 +46,124 @@ func writeNonblank(l []byte) []byte {
 	return out.Bytes()
 }
 
-func Main(argv []string) {
+func New(argv []string) (*Cat, []string) {
+	c := Cat{}
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 
 	showAll := command.Opt("A, show-all", "equivalent to -vET").
 		Flags(flag.PosixShort).NewBool(false)
 
-	numberNonblank := command.Opt("b, number-nonblank",
+	c.NumberNonblank = command.Opt("b, number-nonblank",
 		"number nonempty output lines, overrides -n").
 		Flags(flag.PosixShort).NewBool(false)
 
 	e := command.Opt("e", "equivalent to -vE").
 		Flags(flag.PosixShort).NewBool(false)
 
-	showEnds := command.Opt("E, show-end", "display $ at end of each line").
+	c.ShowEnds = command.Opt("E, show-end", "display $ at end of each line").
 		Flags(flag.PosixShort).NewBool(false)
 
-	number := command.Opt("n, numbe", "number all output line").
+	c.Number = command.Opt("n, number", "number all output line").
 		Flags(flag.PosixShort).NewBool(false)
 
-	squeezeBlank := command.Opt("s, squeeze-blank",
+	c.SqueezeBlank = command.Opt("s, squeeze-blank",
 		"suppress repeated empty output lines").
 		Flags(flag.PosixShort).NewBool(false)
 
 	t := command.Opt("t", "equivalent to -vT").
 		Flags(flag.PosixShort).NewBool(false)
 
-	showTabs := command.Opt("T, show-tabs", "display TAB characters as ^I").
+	c.ShowTabs = command.Opt("T, show-tabs", "display TAB characters as ^I").
 		Flags(flag.PosixShort).NewBool(false)
 
-	showNonprinting := command.Opt("v, show-nonprinting",
+	c.ShowNonprinting = command.Opt("v, show-nonprinting",
 		"use ^ and M- notation, except for LFD and TAB").
 		Flags(flag.PosixShort).NewBool(false)
 
 	command.Parse(argv[1:])
-
-	var oldNew []string
+	args := command.Args()
 
 	if *showAll {
-		*showNonprinting = true
-		*showEnds = true
-		*showTabs = true
+		*c.ShowNonprinting = true
+		*c.ShowEnds = true
+		*c.ShowTabs = true
 	}
 
 	if *e {
-		*showNonprinting = true
-		*showEnds = true
+		*c.ShowNonprinting = true
+		*c.ShowEnds = true
 	}
-
 	if *t {
-		*showNonprinting = true
-		*showTabs = true
+		*c.ShowNonprinting = true
+		*c.ShowTabs = true
 	}
 
-	if *showEnds {
-		oldNew = append(oldNew, "\n", "$\n")
-	}
+	return &c, args
+}
 
-	if *showTabs {
-		oldNew = append(oldNew, "\t", "^I")
-	}
+func SetBool(v bool) *bool {
+	return &v
+}
 
-	catCore := func(r io.Reader) {
-		br := bufio.NewReader(r)
-		replacer := strings.NewReplacer(oldNew...)
+func (c *Cat) main(rs io.ReadSeeker, w io.Writer) {
+	br := bufio.NewReader(rs)
+	replacer := strings.NewReplacer(c.oldNew...)
+	isSpace := 0
 
-		isSpace := 0
-		for count := 1; ; count++ {
-			l, e := br.ReadBytes('\n')
-			if e != nil && len(l) == 0 {
-				break
-			}
-
-			if *squeezeBlank {
-				if len(bytes.TrimSpace(l)) == 0 {
-					isSpace++
-				} else {
-					isSpace = 0
-				}
-
-				if isSpace > 1 {
-					count--
-					continue
-				}
-			}
-
-			if len(oldNew) > 0 {
-				l = []byte(replacer.Replace(string(l)))
-			}
-
-			if *showNonprinting {
-				l = writeNonblank(l)
-			}
-
-			if *numberNonblank || *number {
-				if *numberNonblank {
-					count--
-				}
-
-				if !(*numberNonblank && len(l) == 1) {
-					l = append([]byte(fmt.Sprintf("%6d  ", count)), l...)
-				}
-			}
-
-			os.Stdout.Write(l)
+	for count := 1; ; count++ {
+		l, e := br.ReadBytes('\n')
+		if e != nil && len(l) == 0 {
+			break
 		}
+
+		if c.SqueezeBlank != nil && *c.SqueezeBlank {
+			if len(bytes.TrimSpace(l)) == 0 {
+				isSpace++
+			} else {
+				isSpace = 0
+			}
+
+			if isSpace > 1 {
+				count--
+				continue
+			}
+		}
+
+		if len(c.oldNew) > 0 {
+			l = []byte(replacer.Replace(string(l)))
+		}
+
+		if c.ShowNonprinting != nil && *c.ShowNonprinting {
+			l = writeNonblank(l)
+		}
+
+		if c.NumberNonblank != nil && *c.NumberNonblank ||
+			c.Number != nil && *c.Number {
+			if c.NumberNonblank != nil && *c.NumberNonblank {
+				count--
+			}
+
+			if !(c.NumberNonblank != nil && *c.NumberNonblank && len(l) == 1) {
+				l = append([]byte(fmt.Sprintf("%6d  ", count)), l...)
+			}
+		}
+
+		w.Write(l)
+	}
+}
+
+func Main(argv []string) {
+
+	c, args := New(argv)
+
+	if *c.ShowEnds {
+		c.oldNew = append(c.oldNew, "\n", "$\n")
 	}
 
-	args := command.Args()
+	if *c.ShowTabs {
+		c.oldNew = append(c.oldNew, "\t", "^I")
+	}
+
 	if len(args) > 0 {
 		for _, fileName := range args {
 			f, err := utils.OpenInputFd(fileName)
@@ -151,10 +171,10 @@ func Main(argv []string) {
 				utils.Die("cat: %s\n", err)
 			}
 
-			catCore(f)
+			c.main(f, os.Stdout)
 			utils.CloseInputFd(f)
 		}
 		return
 	}
-	catCore(os.Stdin)
+	c.main(os.Stdin, os.Stdout)
 }

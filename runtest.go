@@ -7,6 +7,7 @@ import (
 
 func main() {
 	command := []string{
+		"cat",
 		"head",
 	}
 
