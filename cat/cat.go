@@ -105,6 +105,10 @@ func SetBool(v bool) *bool {
 	return &v
 }
 
+func (c *Cat) SetTab() {
+	c.oldNew = append(c.oldNew, "\t", "^I")
+}
+
 func (c *Cat) main(rs io.ReadSeeker, w io.Writer) {
 	br := bufio.NewReader(rs)
 	replacer := strings.NewReplacer(c.oldNew...)

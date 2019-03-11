@@ -44,3 +44,23 @@ func TestNumber(t *testing.T) {
 	}
 
 }
+
+func TestTab(t *testing.T) {
+	testTab := "\t\t\t\t\t\t\t\t\n\t\t\t\t\t\n"
+	c := Cat{}
+	c.SetTab()
+
+	in := strings.NewReader(testTab)
+	out := &bytes.Buffer{}
+
+	c.main(in, out)
+
+	outStr := out.String()
+	outStr = strings.Replace(outStr, "^I", "", -1)
+	outStr = strings.Replace(outStr, "\n", "", -1)
+
+	if len(outStr) != 0 {
+		t.Fatalf("cat -T fail (%s)", outStr)
+
+	}
+}
