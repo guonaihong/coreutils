@@ -109,7 +109,11 @@ func (c *Cat) SetTab() {
 	c.oldNew = append(c.oldNew, "\t", "^I")
 }
 
-func (c *Cat) main(rs io.ReadSeeker, w io.Writer) {
+func (c *Cat) SetEnds() {
+	c.oldNew = append(c.oldNew, "\n", "$\n")
+}
+
+func (c *Cat) Cat(rs io.ReadSeeker, w io.Writer) {
 	br := bufio.NewReader(rs)
 	replacer := strings.NewReplacer(c.oldNew...)
 	isSpace := 0
@@ -161,11 +165,11 @@ func Main(argv []string) {
 	c, args := New(argv)
 
 	if *c.ShowEnds {
-		c.oldNew = append(c.oldNew, "\n", "$\n")
+		c.SetEnds()
 	}
 
 	if *c.ShowTabs {
-		c.oldNew = append(c.oldNew, "\t", "^I")
+		c.SetTab()
 	}
 
 	if len(args) > 0 {
@@ -175,10 +179,10 @@ func Main(argv []string) {
 				utils.Die("cat: %s\n", err)
 			}
 
-			c.main(f, os.Stdout)
+			c.Cat(f, os.Stdout)
 			utils.CloseInputFd(f)
 		}
 		return
 	}
-	c.main(os.Stdin, os.Stdout)
+	c.Cat(os.Stdin, os.Stdout)
 }

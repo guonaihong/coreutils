@@ -25,7 +25,7 @@ func TestNumber(t *testing.T) {
 	in := strings.NewReader(testNumber)
 	out := &bytes.Buffer{}
 
-	c.main(in, out)
+	c.Cat(in, out)
 
 	br := bufio.NewReader(strings.NewReader(out.String()))
 	number := 0
@@ -53,7 +53,7 @@ func TestTab(t *testing.T) {
 	in := strings.NewReader(testTab)
 	out := &bytes.Buffer{}
 
-	c.main(in, out)
+	c.Cat(in, out)
 
 	outStr := out.String()
 	outStr = strings.Replace(outStr, "^I", "", -1)
@@ -62,5 +62,29 @@ func TestTab(t *testing.T) {
 	if len(outStr) != 0 {
 		t.Fatalf("cat -T fail (%s)", outStr)
 
+	}
+}
+
+func TestEnds(t *testing.T) {
+	testEnds := `1
+2
+3`
+	c := Cat{}
+	c.SetEnds()
+
+	in := strings.NewReader(testEnds)
+	out := &bytes.Buffer{}
+
+	c.Cat(in, out)
+
+	ls := strings.Split(out.String(), "\n")
+	for _, v := range ls {
+		if v == "3" {
+			continue
+		}
+
+		if !strings.HasSuffix(v, "$") {
+			t.Fatalf("cat -E fail (%s)\n", v)
+		}
 	}
 }
