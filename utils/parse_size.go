@@ -61,19 +61,26 @@ func (s Size) IntPtr() *int {
 }
 
 func HeadParseSize(s string) (Size, error) {
+	sign := '+'
+	if len(s) > 0 && (s[0] == '-' || s[0] == '+') {
+		sign = rune(s[0])
+		s = s[1:]
+	}
+
 	i, have := IsDecimalStr(s, len(s))
 	if !have {
 		return Size(0), fmt.Errorf("invalid number of bytes: '%s'", s)
 	}
 
 	n := 0
+	suffix := Size(1)
+
 	fmt.Sscanf(s, "%d", &n)
 
 	if i >= len(s) {
-		return Size(n), nil
+		goto quit
 	}
 
-	suffix := Size(0)
 	switch s[i:] {
 	case "B":
 		suffix = B
@@ -115,6 +122,11 @@ func HeadParseSize(s string) (Size, error) {
 		*/
 	default:
 		return 0, errors.New("Unsupported suffix")
+	}
+
+quit:
+	if sign == '-' {
+		return Size(-n * int(suffix)), nil
 	}
 
 	return Size(n * int(suffix)), nil

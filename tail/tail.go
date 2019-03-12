@@ -2,7 +2,6 @@ package tail
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
@@ -123,7 +122,6 @@ func (t *Tail) printTailLines(rs io.ReadSeeker, w io.Writer, n int) error {
 			break
 		}
 
-		fmt.Printf("%s", l)
 		if no == 0 {
 			totalMap[no] = len(l)
 			continue
@@ -132,8 +130,6 @@ func (t *Tail) printTailLines(rs io.ReadSeeker, w io.Writer, n int) error {
 		totalMap[no] = totalMap[no-1] + len(l)
 	}
 
-	fmt.Printf("%d\n", totalMap)
-	fmt.Printf("n = %d: %d no = %d\n", n, totalMap[no+n], no)
 	rs.Seek(int64(totalMap[no+n]), 0)
 
 	for {
@@ -158,19 +154,20 @@ func (t *Tail) PrintLines(rs io.ReadSeeker, w io.Writer) error {
 	}
 
 	lines := *t.Lines
-	readLast := false
+	readLast := true
 
+	//+10
 	if lines[0] != '+' && lines[0] != '-' || n < 0 {
-		readLast = true
+		readLast = false
 		if n > 0 {
 			n = -n
 		}
 	}
 
-	if !readLast {
+	if readLast {
 
 		br := bufio.NewReader(rs)
-		for i := 0; ; i++ {
+		for i := 1; ; i++ {
 
 			l, e := br.ReadBytes(t.LineDelim)
 			if e != nil && len(l) == 0 {
