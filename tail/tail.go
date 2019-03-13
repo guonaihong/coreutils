@@ -9,7 +9,7 @@ import (
 )
 
 type Tail struct {
-	Bytes             *int
+	Bytes             *string
 	Follow            *string
 	Lines             *string
 	Quiet             *bool
@@ -25,7 +25,7 @@ func New(argv []string) (*Tail, []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 
 	t := Tail{}
-	nbytes := command.Opt("c, bytes", "output the last NUM bytes; or use -c +NUM to\n"+
+	t.Bytes = command.Opt("c, bytes", "output the last NUM bytes; or use -c +NUM to\n"+
 		"output starting with byte NUM of each file").
 		Flags(flag.PosixShort).
 		NewString("0")
@@ -84,13 +84,6 @@ func New(argv []string) (*Tail, []string) {
 
 	command.Parse(argv[1:])
 
-	n, err := utils.HeadParseSize(*nbytes)
-	if err != nil {
-		utils.Die("head:%s\n", err)
-	}
-
-	t.Bytes = n.IntPtr()
-
 	t.LineDelim = '\n'
 	if *zeroTerminated {
 		t.LineDelim = '\000'
@@ -105,7 +98,47 @@ func New(argv []string) (*Tail, []string) {
 }
 
 func (t *Tail) PrintBytes(rs io.ReadSeeker, w io.Writer) error {
-	return nil
+	nBytes := 0
+
+	n, err := utils.HeadParseSize(*t.Bytes)
+	if err != nil {
+		return err
+	}
+
+	nBytes = int(n)
+	bytes := *t.Bytes
+
+	readTail := false
+	if bytes[0] != '+' || nBytes < 0 {
+		if nBytes > 0 {
+			nBytes = -nBytes
+		}
+		readTail = true
+	}
+
+	if readTail {
+		offset, err := rs.Seek(0, 2)
+		if err != nil {
+			return err
+		}
+
+		rs.Seek(offset+int64(nBytes), 0)
+
+		_, err = io.Copy(w, rs)
+		return err
+	}
+
+	if nBytes > 0 {
+		nBytes--
+	}
+
+	if _, err = rs.Seek(int64(nBytes), 0); err != nil {
+		return err
+	}
+
+	_, err = io.Copy(w, rs)
+
+	return err
 }
 
 func (t *Tail) printTailLines(rs io.ReadSeeker, w io.Writer, n int) error {
@@ -146,21 +179,23 @@ func (t *Tail) printTailLines(rs io.ReadSeeker, w io.Writer, n int) error {
 }
 
 func (t *Tail) PrintLines(rs io.ReadSeeker, w io.Writer) error {
-	n := 0
-	if n0, err := utils.HeadParseSize(*t.Lines); err != nil {
+	nLines := 0
+
+	n0, err := utils.HeadParseSize(*t.Lines)
+	if err != nil {
 		return err
-	} else {
-		n = int(n0)
 	}
+
+	nLines = int(n0)
 
 	lines := *t.Lines
 	readLast := true
 
 	//+10
-	if lines[0] != '+' && lines[0] != '-' || n < 0 {
+	if lines[0] != '+' && lines[0] != '-' || nLines < 0 {
 		readLast = false
-		if n > 0 {
-			n = -n
+		if nLines > 0 {
+			nLines = -nLines
 		}
 	}
 
@@ -174,7 +209,7 @@ func (t *Tail) PrintLines(rs io.ReadSeeker, w io.Writer) error {
 				break
 			}
 
-			if i < n {
+			if i < nLines {
 				continue
 			}
 
@@ -183,7 +218,7 @@ func (t *Tail) PrintLines(rs io.ReadSeeker, w io.Writer) error {
 		return nil
 	}
 
-	return t.printTailLines(rs, w, n)
+	return t.printTailLines(rs, w, nLines)
 }
 
 func (t *Tail) main(rs io.ReadSeeker, w io.Writer, name string) {
