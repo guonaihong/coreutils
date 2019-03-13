@@ -88,3 +88,47 @@ func TestEnds(t *testing.T) {
 		}
 	}
 }
+
+func TestSqueezeBlank(t *testing.T) {
+	c := Cat{}
+	b := true
+	c.SqueezeBlank = &b
+
+	rs := strings.NewReader("\n\n\n12\n\n\n\n34\n\n\n")
+	w := &bytes.Buffer{}
+	c.Cat(rs, w)
+
+	outStr := `
+12
+
+34
+
+`
+	if w.String() != outStr {
+		t.Fatalf("cat -s fail(%s)\n", w.String())
+	}
+}
+
+func TestNumberNonblank(t *testing.T) {
+	c := Cat{}
+	b := true
+	c.NumberNonblank = &b
+
+	rs := strings.NewReader("\n\n\n12\n\n\n\n34\n\n\n")
+	w := &bytes.Buffer{}
+	c.Cat(rs, w)
+	outStr := `
+
+
+     1	12
+
+
+
+     2	34
+
+
+`
+	if w.String() != outStr {
+		t.Fatalf("cat -b fail(%s), need(%s)\n", w.String(), outStr)
+	}
+}

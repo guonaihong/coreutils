@@ -113,18 +113,35 @@ func (c *Cat) SetEnds() {
 	c.oldNew = append(c.oldNew, "\n", "$\n")
 }
 
+func (c *Cat) isNumberNonblank() bool {
+	return c.NumberNonblank != nil && *c.NumberNonblank
+}
+
+func (c *Cat) isNumber() bool {
+	return c.Number != nil && *c.Number
+}
+
+func (c *Cat) isShowNonprinting() bool {
+	return c.ShowNonprinting != nil && *c.ShowNonprinting
+}
+
+func (c *Cat) isSqueezeBlank() bool {
+	return c.SqueezeBlank != nil && *c.SqueezeBlank
+}
+
 func (c *Cat) Cat(rs io.ReadSeeker, w io.Writer) {
 	br := bufio.NewReader(rs)
 	replacer := strings.NewReplacer(c.oldNew...)
 	isSpace := 0
 
 	for count := 1; ; count++ {
+
 		l, e := br.ReadBytes('\n')
 		if e != nil && len(l) == 0 {
 			break
 		}
 
-		if c.SqueezeBlank != nil && *c.SqueezeBlank {
+		if c.isSqueezeBlank() {
 			if len(bytes.TrimSpace(l)) == 0 {
 				isSpace++
 			} else {
@@ -141,18 +158,18 @@ func (c *Cat) Cat(rs io.ReadSeeker, w io.Writer) {
 			l = []byte(replacer.Replace(string(l)))
 		}
 
-		if c.ShowNonprinting != nil && *c.ShowNonprinting {
+		if c.isShowNonprinting() {
 			l = writeNonblank(l)
 		}
 
-		if c.NumberNonblank != nil && *c.NumberNonblank ||
-			c.Number != nil && *c.Number {
-			if c.NumberNonblank != nil && *c.NumberNonblank {
+		if c.isNumberNonblank() || c.isNumber() {
+
+			if c.isNumberNonblank() && len(l) == 1 {
 				count--
 			}
 
-			if !(c.NumberNonblank != nil && *c.NumberNonblank && len(l) == 1) {
-				l = append([]byte(fmt.Sprintf("%6d  ", count)), l...)
+			if !(c.isNumberNonblank() && len(l) == 1) {
+				l = append([]byte(fmt.Sprintf("%6d\t", count)), l...)
 			}
 		}
 

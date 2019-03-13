@@ -8,6 +8,7 @@ import (
 func main() {
 	command := []string{
 		"cat",
+		"tail",
 		"head",
 	}
 
