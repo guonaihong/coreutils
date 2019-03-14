@@ -6,6 +6,7 @@ import (
 	"github.com/guonaihong/flag"
 	"io"
 	"os"
+	"time"
 )
 
 type Tail struct {
@@ -29,6 +30,11 @@ func New(argv []string) (*Tail, []string) {
 		"output starting with byte NUM of each file").
 		Flags(flag.PosixShort).
 		NewString("0")
+
+	follow := command.Opt("f", "output appended data as the file grows;\n"+
+		"an absent option argument means 'descriptor'").
+		Flags(flag.PosixShort).
+		NewBool(false)
 
 	t.Follow = command.Opt("f, follow", "output appended data as the file grows;\n"+
 		"an absent option argument means 'descriptor'").
@@ -72,7 +78,7 @@ func New(argv []string) (*Tail, []string) {
 		"with inotify and --pid=P, check process P at\n"+
 		"least once every N seconds").
 		Flags(flag.PosixShort).
-		NewFloat64(0.0)
+		NewFloat64(1.0)
 
 	t.Verbose = command.Opt("v, verbose", "always print headers giving file names").
 		Flags(flag.PosixShort).
@@ -87,6 +93,11 @@ func New(argv []string) (*Tail, []string) {
 	t.LineDelim = '\n'
 	if *zeroTerminated {
 		t.LineDelim = '\000'
+	}
+
+	if *follow {
+		f := "name"
+		t.Follow = &f
 	}
 
 	args := command.Args()
@@ -146,6 +157,9 @@ func (t *Tail) printTailLines(rs io.ReadSeeker, w io.Writer, n int) error {
 	totalMap := map[int]int{}
 	br := bufio.NewReader(rs)
 
+	// todo 优化:
+	// 直接定位到最后位置向前读取一个个buffer block
+	// 计算 '\n' 个数, 输出行数, 可以优化大文件尾部读取
 	for no = 0; ; no++ {
 
 		l, e := br.ReadBytes(t.LineDelim)
@@ -221,7 +235,39 @@ func (t *Tail) PrintLines(rs io.ReadSeeker, w io.Writer) error {
 	return t.printTailLines(rs, w, nLines)
 }
 
+func (t *Tail) FollowLoop(rs io.ReadSeeker, w io.Writer) {
+
+	br := bufio.NewReader(rs)
+	for {
+
+		time.Sleep(time.Duration(float64(time.Second) * *t.SleepInterval))
+
+		for {
+
+			l, e := br.ReadBytes(t.LineDelim)
+			if e != nil && len(l) == 0 {
+				break
+			}
+			w.Write(l)
+		}
+	}
+}
+
 func (t *Tail) main(rs io.ReadSeeker, w io.Writer, name string) {
+	if len(*t.Follow) > 0 {
+		t.FollowLoop(rs, w)
+	}
+
+	if t.Bytes != nil && *t.Bytes != "0" {
+		t.PrintBytes(rs, w)
+		return
+	}
+
+	if t.Lines != nil && len(*t.Lines) > 0 {
+		t.PrintLines(rs, w)
+		return
+	}
+
 }
 
 func Main(argv []string) {
