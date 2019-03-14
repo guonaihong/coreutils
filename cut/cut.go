@@ -4,12 +4,79 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
+	"io"
 	"math"
 	"os"
 	"strconv"
 	"strings"
 )
+
+type Cut struct {
+	Bytes           *string
+	Characters      *string
+	Delimiter       *string
+	Fields          *string
+	Complement      *bool
+	OnlyDelimited   *bool
+	OutputDelimiter *string
+	LineDelim       byte
+	filterCtrl
+}
+
+func New(argv []string) (*Cut, []string) {
+	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
+
+	c := Cut{}
+
+	c.Bytes = command.Opt("b, bytes", "select only these bytes").
+		Flags(flag.PosixShort).
+		NewString("")
+
+	c.Characters = command.Opt("c, characters", "select only these characters").
+		Flags(flag.PosixShort).
+		NewString("")
+
+	c.Delimiter = command.Opt("d, delimiter", "use DELIM instead of TAB for field delimiter").
+		Flags(flag.PosixShort).
+		NewString("\t")
+
+	c.Fields = command.Opt("f, fields", "select only these fields;  also print any line\n"+
+		" that contains no delimiter character, unless\n"+
+		" the -s option is specified").
+		Flags(flag.PosixShort).
+		NewString("")
+
+	c.Complement = command.Opt("complement", "complement the set of selected bytes, characters\n"+
+		"or fields").
+		Flags(flag.PosixShort).
+		NewBool(false)
+
+	c.OnlyDelimited = command.Opt("s, only-delimited", "do not print lines not containing delimiters").
+		Flags(flag.PosixShort).
+		NewBool(false)
+
+	c.OutputDelimiter = command.Opt("output-delimiter", "use STRING as the output delimiter\n"+
+		"the default is to use the input delimiter").
+		Flags(flag.PosixShort).
+		NewString("")
+
+	zeroTerminated := command.Opt("zero-terminated", "line delimiter is NUL, not newline").
+		Flags(flag.PosixShort).
+		NewBool(false)
+
+	command.Parse(argv[1:])
+
+	args := command.Args()
+
+	c.LineDelim = byte('\n')
+	if *zeroTerminated {
+		c.LineDelim = '\000'
+	}
+
+	return &c, args
+}
 
 type paragraph struct {
 	start, end int
@@ -96,158 +163,137 @@ func (f *filterCtrl) check(index int) (ok bool) {
 	return ok
 }
 
-func Main(argv []string) {
-	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
-	bytes0 := command.String("b, bytes", "", "select only these bytes")
-	characters := command.String("c, characters", "", "select only these characters")
-	delimiter := command.String("d, delimiter", "\t", "use DELIM instead of TAB for field delimiter")
-	fields := command.String("f, fields", "", "select only these fields;  also print any line that contains no delimiter character, unless the -s option is specified")
-	complement := command.Bool("complement", false, "complement the set of selected bytes, characters or fields")
-	onlyDelimited := command.Bool("s, only-delimited", false, "do not print lines not containing delimiters")
-	outputDelimiter := command.String("output-delimiter", "", "use STRING as the output delimiter the default is to use the input delimiter")
-	zeroTerminated := command.Bool("zero-terminated", false, "line delimiter is NUL, not newline")
+func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
+	reader := bufio.NewReader(rs)
+	buf := bytes.Buffer{}
+	output := [][]byte{}
+	byteOutput := []byte{}
 
-	command.Parse(argv[1:])
+	defer func() {
+		if buf.Len() > 0 {
+			w.Write(buf.Bytes())
+		}
+	}()
 
-	args := command.Args()
-
-	lineDelim := byte('\n')
-
-	checkFiledsNum := func() {
-		filedsCount := 0
-
-		if len(*bytes0) > 0 {
-			filedsCount++
+	for {
+		line, err := reader.ReadBytes(c.LineDelim)
+		if err != nil {
+			break
 		}
 
-		if len(*characters) > 0 {
-			filedsCount++
-		}
-
-		if len(*fields) > 0 {
-			filedsCount++
-		}
-
-		if filedsCount >= 2 {
-			fmt.Printf("only one type of list may be specified\n")
-			os.Exit(1)
-		}
-
-		if filedsCount == 0 {
-			fmt.Printf("you must specify a list of bytes, characters, or fields\n")
-			os.Exit(1)
-		}
-	}
-
-	checkFiledsNum()
-
-	if *zeroTerminated {
-		lineDelim = byte(0)
-	}
-
-	if len(*bytes0) > 0 {
-		*characters = *bytes0
-	}
-
-	filterFilter := filterCtrl{}
-	if len(*fields) > 0 {
-		filterFilter.init(*fields)
-		*outputDelimiter = *delimiter
-	} else {
-		filterFilter.init(*characters)
-	}
-
-	cutCore := func(file *os.File) {
-		reader := bufio.NewReader(file)
-		buf := bytes.Buffer{}
-		output := [][]byte{}
-		byteOutput := []byte{}
-
-		defer func() {
-			if buf.Len() > 0 {
-				os.Stdout.Write(buf.Bytes())
-			}
-		}()
-
-		for {
-			line, err := reader.ReadBytes(lineDelim)
-			if err != nil {
-				break
-			}
-
-			have := false
-			if len(*fields) > 0 {
-				ls := bytes.Split(line, []byte(*delimiter))
-				if len(ls) == 1 {
-					if *onlyDelimited {
-						continue
-					}
-					buf.Write(line)
-					goto write
+		have := false
+		if len(*c.Fields) > 0 {
+			ls := bytes.Split(line, []byte(*c.Delimiter))
+			if len(ls) == 1 {
+				if *c.OnlyDelimited {
+					continue
 				}
-
-				for i, v := range ls {
-					checkOk := filterFilter.check(i + 1)
-					if *complement {
-						checkOk = !checkOk
-					}
-
-					if checkOk {
-						have = true
-						output = append(output, v)
-					}
-				}
-				//todo
-				buf.Write(bytes.Join(output, []byte(*outputDelimiter)))
-				output = output[:0]
-
+				buf.Write(line)
 				goto write
 			}
 
-			for i, v := range line {
-				checkOk := filterFilter.check(i + 1)
-				if *complement {
+			for i, v := range ls {
+				checkOk := c.check(i + 1)
+				if *c.Complement {
 					checkOk = !checkOk
 				}
 
 				if checkOk {
 					have = true
-					byteOutput = append(byteOutput, v)
+					output = append(output, v)
 				}
 			}
+			//todo
+			buf.Write(bytes.Join(output, []byte(*c.OutputDelimiter)))
+			output = output[:0]
 
-			buf.Write(byteOutput)
-			byteOutput = byteOutput[:0]
+			goto write
+		}
 
-		write:
-			if have {
-				if buf.Bytes()[buf.Len()-1] != lineDelim {
-					buf.WriteByte(lineDelim)
-				}
+		for i, v := range line {
+			checkOk := c.check(i + 1)
+			if *c.Complement {
+				checkOk = !checkOk
 			}
 
-			if buf.Len() >= 0 {
-				os.Stdout.Write(buf.Bytes())
-				buf.Reset()
+			if checkOk {
+				have = true
+				byteOutput = append(byteOutput, v)
 			}
+		}
+
+		buf.Write(byteOutput)
+		byteOutput = byteOutput[:0]
+
+	write:
+		if have {
+			if buf.Bytes()[buf.Len()-1] != c.LineDelim {
+				buf.WriteByte(c.LineDelim)
+			}
+		}
+
+		if buf.Len() >= 0 {
+			w.Write(buf.Bytes())
+			buf.Reset()
+		}
+	}
+}
+
+func (c *Cut) Init() {
+	checkFiledsNum := func() {
+		filedsCount := 0
+
+		if len(*c.Bytes) > 0 {
+			filedsCount++
+		}
+
+		if len(*c.Characters) > 0 {
+			filedsCount++
+		}
+
+		if len(*c.Fields) > 0 {
+			filedsCount++
+		}
+
+		if filedsCount >= 2 {
+			utils.Die("only one type of list may be specified\n")
+		}
+
+		if filedsCount == 0 {
+			utils.Die("you must specify a list of bytes, characters, or fields\n")
 		}
 	}
 
+	checkFiledsNum()
+
+	if len(*c.Bytes) > 0 {
+		*c.Characters = *c.Bytes
+	}
+
+	if len(*c.Fields) > 0 {
+		c.init(*c.Fields)
+		*c.OutputDelimiter = *c.Delimiter
+	} else {
+		c.init(*c.Characters)
+	}
+
+}
+
+func Main(argv []string) {
+
+	c, args := New(argv)
+
 	if len(args) == 0 {
-		cutCore(os.Stdin)
-		return
+		args = append(args, "-")
 	}
 
 	for _, v := range args {
-		func() {
-			fd, err := os.Open(v)
-			if err != nil {
-				fmt.Printf("%s\n", err)
-				os.Exit(1)
-			}
+		fd, err := utils.OpenInputFd(v)
+		if err != nil {
+			utils.Die("cut: %s\n", err)
+		}
 
-			defer fd.Close()
-			cutCore(fd)
-		}()
+		c.Cut(fd, os.Stdout)
+		utils.CloseInputFd(fd)
 	}
 }
