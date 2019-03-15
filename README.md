@@ -17,6 +17,7 @@ env GOPATH=`pwd` go get github.com/guonaihong/coreutils/coreutils
 * head [详情](./head/README.md)
 * paste [详情](./paste/README.md)
 * tee [详情](./tee/README.md)
+* tail [详情](./tail/README.md)
 * tr [详情](./tr/README.md)
 * uniq [详情](./uniq/README.md)
 * whoami [详情](./whoami/README.md)

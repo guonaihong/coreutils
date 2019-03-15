@@ -235,6 +235,10 @@ func (t *Tail) PrintLines(rs io.ReadSeeker, w io.Writer) error {
 	return t.printTailLines(rs, w, nLines)
 }
 
+func (t *Tail) PrintTitle(w io.Writer, name string) {
+	fmt.Fprintf(w, "==> %s <==\n")
+}
+
 func (t *Tail) FollowLoop(rs io.ReadSeeker, w io.Writer) {
 
 	br := bufio.NewReader(rs)
@@ -254,6 +258,10 @@ func (t *Tail) FollowLoop(rs io.ReadSeeker, w io.Writer) {
 }
 
 func (t *Tail) main(rs io.ReadSeeker, w io.Writer, name string) {
+	if *t.Verbose {
+		t.PrintTitle(w, name)
+	}
+
 	if len(*t.Follow) > 0 {
 		t.FollowLoop(rs, w)
 	}
