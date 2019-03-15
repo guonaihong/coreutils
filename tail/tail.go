@@ -2,6 +2,7 @@ package tail
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"

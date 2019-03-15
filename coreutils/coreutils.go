@@ -12,6 +12,7 @@ import (
 	"github.com/guonaihong/coreutils/tail"
 	"github.com/guonaihong/coreutils/tee"
 	"github.com/guonaihong/coreutils/tr"
+	"github.com/guonaihong/coreutils/true"
 	"github.com/guonaihong/coreutils/uniq"
 	"github.com/guonaihong/coreutils/whoami"
 	"github.com/guonaihong/coreutils/yes"
@@ -40,6 +41,10 @@ func main() {
 
 	parent.SubCommand("tr", "Use the tr subcommand", func() {
 		tr.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("true", "Use the true subcommand", func() {
+		true.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("basename", "Use the basename subcommand", func() {
