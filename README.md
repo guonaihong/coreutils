@@ -3,9 +3,22 @@
 ## 简介
 coreutils项目是gnu coreutils的扩展
 
-## install
+## install coreutils
 ```
 env GOPATH=`pwd` go get github.com/guonaihong/coreutils/coreutils
+```
+If you want to use the cat command
+```
+./coreutils cat fle
+```
+
+## install Compile command separately
+```
+env GOPATH=`pwd` go run github.com/guonaihong/coreutils/buildall
+```
+If you want to use the cat command
+```
+./cat fle
 ```
 
 ## 已完成命令如下 

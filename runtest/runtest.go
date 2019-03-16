@@ -7,6 +7,8 @@ import (
 
 func main() {
 	command := []string{
+		"base32",
+		"base64",
 		"cat",
 		"cut",
 		"tail",

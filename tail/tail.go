@@ -237,7 +237,7 @@ func (t *Tail) PrintLines(rs io.ReadSeeker, w io.Writer) error {
 }
 
 func (t *Tail) PrintTitle(w io.Writer, name string) {
-	fmt.Fprintf(w, "==> %s <==\n")
+	fmt.Fprintf(w, "==> %s <==\n", name)
 }
 
 func (t *Tail) FollowLoop(rs io.ReadSeeker, w io.Writer) {
