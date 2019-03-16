@@ -177,12 +177,12 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 
 	for {
 		line, err := reader.ReadBytes(c.LineDelim)
-		if err != nil {
+		if err != nil && len(line) == 0 {
 			break
 		}
 
 		have := false
-		if len(*c.Fields) > 0 {
+		if c.isFields() {
 			ls := bytes.Split(line, []byte(*c.Delimiter))
 			if len(ls) == 1 {
 				if *c.OnlyDelimited {
@@ -212,7 +212,7 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 
 		for i, v := range line {
 			checkOk := c.check(i + 1)
-			if *c.Complement {
+			if c.isComplement() {
 				checkOk = !checkOk
 			}
 
@@ -227,7 +227,7 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 
 	write:
 		if have {
-			if buf.Bytes()[buf.Len()-1] != c.LineDelim {
+			if buf.Bytes()[buf.Len()-1] != c.LineDelim && line[len(line)-1] == c.LineDelim {
 				buf.WriteByte(c.LineDelim)
 			}
 		}
@@ -239,6 +239,22 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 	}
 }
 
+func (c *Cut) isBytes() bool {
+	return c.Bytes != nil && len(*c.Bytes) > 0
+}
+
+func (c *Cut) isCharacters() bool {
+	return c.Characters != nil && len(*c.Characters) > 0
+}
+
+func (c *Cut) isFields() bool {
+	return c.Fields != nil && len(*c.Fields) > 0
+}
+
+func (c *Cut) isComplement() bool {
+	return c.Complement != nil && *c.Complement
+}
+
 func (c *Cut) Init() {
 	checkFiledsNum := func() {
 		filedsCount := 0
@@ -247,11 +263,11 @@ func (c *Cut) Init() {
 			filedsCount++
 		}
 
-		if len(*c.Characters) > 0 {
+		if c.isCharacters() {
 			filedsCount++
 		}
 
-		if len(*c.Fields) > 0 {
+		if c.isFields() {
 			filedsCount++
 		}
 
@@ -266,11 +282,11 @@ func (c *Cut) Init() {
 
 	checkFiledsNum()
 
-	if len(*c.Bytes) > 0 {
-		*c.Characters = *c.Bytes
+	if c.isBytes() {
+		c.Characters = c.Bytes
 	}
 
-	if len(*c.Fields) > 0 {
+	if c.isFields() {
 		c.init(*c.Fields)
 		*c.OutputDelimiter = *c.Delimiter
 	} else {
@@ -283,6 +299,7 @@ func Main(argv []string) {
 
 	c, args := New(argv)
 
+	c.Init()
 	if len(args) == 0 {
 		args = append(args, "-")
 	}
