@@ -35,7 +35,7 @@ func New(argv []string) (*Head, []string) {
 			Usage: "print the first NUM lines instead of the first 10;" +
 				"with the leading '-', print all but the last" +
 				"NUM lines of each file"}).
-		Flags(flag.RegexKeyIsValue).
+		Flags(flag.RegexKeyIsValue | flag.PosixShort).
 		NewInt(10)
 
 	h.Quiet = command.Opt("q, quiet, silent", "never print headers giving file names").

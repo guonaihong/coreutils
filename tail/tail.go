@@ -53,7 +53,7 @@ func New(argv []string) (*Tail, []string) {
 			Long:  []string{"lines"},
 			Usage: "output appended data as the file grows;\n" +
 				"an absent option argument means 'descriptor'"}).
-		Flags(flag.RegexKeyIsValue).
+		Flags(flag.RegexKeyIsValue | flag.PosixShort).
 		NewString("10")
 
 	t.MaxUnchangedStats = command.Opt("max-unchanged-stats", "with --follow=name, reopen a FILE which has not\n"+
