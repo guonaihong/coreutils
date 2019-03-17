@@ -185,7 +185,7 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 		if c.isFields() {
 			ls := bytes.Split(line, []byte(*c.Delimiter))
 			if len(ls) == 1 {
-				if *c.OnlyDelimited {
+				if c.isOnlyDelimited() {
 					continue
 				}
 				buf.Write(line)
@@ -194,7 +194,7 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 
 			for i, v := range ls {
 				checkOk := c.check(i + 1)
-				if *c.Complement {
+				if c.isComplement() {
 					checkOk = !checkOk
 				}
 
@@ -203,7 +203,7 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 					output = append(output, v)
 				}
 			}
-			//todo
+
 			buf.Write(bytes.Join(output, []byte(*c.OutputDelimiter)))
 			output = output[:0]
 
@@ -255,11 +255,23 @@ func (c *Cut) isComplement() bool {
 	return c.Complement != nil && *c.Complement
 }
 
+func (c *Cut) isDelimiter() bool {
+	return c.Delimiter != nil && len(*c.Delimiter) > 0
+}
+
+func (c *Cut) isOutputDelimiter() bool {
+	return c.OutputDelimiter != nil && len(*c.OutputDelimiter) > 0
+}
+
+func (c *Cut) isOnlyDelimited() bool {
+	return c.OnlyDelimited != nil && *c.OnlyDelimited
+}
+
 func (c *Cut) Init() {
 	checkFiledsNum := func() {
 		filedsCount := 0
 
-		if len(*c.Bytes) > 0 {
+		if c.isBytes() {
 			filedsCount++
 		}
 
@@ -288,10 +300,13 @@ func (c *Cut) Init() {
 
 	if c.isFields() {
 		c.init(*c.Fields)
-		*c.OutputDelimiter = *c.Delimiter
-	} else {
-		c.init(*c.Characters)
+		if c.isDelimiter() && c.OutputDelimiter == nil {
+			c.OutputDelimiter = c.Delimiter
+		}
+		return
 	}
+
+	c.init(*c.Characters)
 
 }
 
