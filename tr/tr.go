@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/guonaihong/flag"
+	"io"
 	"math"
 	"os"
 	"strconv"
@@ -12,14 +13,15 @@ import (
 	"unicode"
 )
 
-type tr struct {
+type Tr struct {
 	set1Tab        map[byte]byte
 	set2Tab        map[byte]byte
 	set1Complement map[byte]byte
 	squeezeRepeat  int64
-	delete         bool
+	Delete         bool
 	truncateSet1   bool
-	complement     bool
+	Complement     bool
+	squeezeRepeats bool
 	class          setClass
 }
 
@@ -267,7 +269,7 @@ func parseSet(setTab map[byte]byte, set1, set2 string, truncateSet1 bool, parseR
 	}
 }
 
-func (t *tr) init(set1, set2 string) {
+func (t *Tr) Init(set1, set2 string) {
 	t.class.init()
 
 	t.class.get(set1)
@@ -281,7 +283,7 @@ func (t *tr) init(set1, set2 string) {
 	parseSet(t.set1Tab, set1, set2, t.truncateSet1, true)
 	parseSet(t.set2Tab, set2, "", t.truncateSet1, true)
 
-	if t.complement {
+	if t.Complement {
 		buf := bytes.Buffer{}
 		for i := 0; i < 255; i++ {
 			if _, ok := t.set1Tab[byte(i)]; ok {
@@ -294,7 +296,7 @@ func (t *tr) init(set1, set2 string) {
 
 }
 
-func (t *tr) convert(b byte) byte {
+func (t *Tr) convert(b byte) byte {
 	b0, ok := t.set1Tab[b]
 	if ok {
 		return byte(b0)
@@ -303,12 +305,12 @@ func (t *tr) convert(b byte) byte {
 	return b
 }
 
-func (t *tr) needDelete(b byte) bool {
+func (t *Tr) needDelete(b byte) bool {
 	_, ok := t.set1Tab[b]
 	return ok
 }
 
-func (t *tr) squeezeRepeats(b byte) (byte, bool) {
+func (t *Tr) getSqueezeRepeats(b byte) (byte, bool) {
 	outByte, ok := t.set1Tab[b]
 	if !ok {
 		if outByte2, ok := t.set2Tab[b]; ok {
@@ -335,7 +337,7 @@ set:
 	return outByte, false
 }
 
-func (t *tr) getComplement(b byte) byte {
+func (t *Tr) getComplement(b byte) byte {
 	if _, ok := t.set1Tab[b]; ok {
 		return b
 	}
@@ -346,7 +348,7 @@ func (t *tr) getComplement(b byte) byte {
 	panic(fmt.Sprintf("unkown error:%c", b))
 }
 
-func Main(argv []string) {
+func New(argv []string) (*Tr, []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 	complement := command.Opt("c, C, complement", "use the complement of SET1").
 		Flags(flag.PosixShort).NewBool(false)
@@ -375,11 +377,12 @@ func Main(argv []string) {
 		set2 = args[1]
 	}
 
-	tab := tr{
-		delete:        *delete,
-		truncateSet1:  *truncateSet1,
-		squeezeRepeat: math.MaxInt64,
-		complement:    *complement,
+	tab := Tr{
+		Delete:         *delete,
+		truncateSet1:   *truncateSet1,
+		squeezeRepeat:  math.MaxInt64,
+		Complement:     *complement,
+		squeezeRepeats: *squeezeRepeats,
 	}
 
 	if *delete && len(args) >= 2 {
@@ -391,34 +394,38 @@ func Main(argv []string) {
 		}
 	}
 
-	tab.init(set1, set2)
+	tab.Init(set1, set2)
 
-	stdin := bufio.NewReader(os.Stdin)
+	return &tab, args
+}
+
+func (t *Tr) Tr(rs io.ReadSeeker, w io.Writer) {
+	br := bufio.NewReader(rs)
 
 	var oneByte [1]byte
 
 	for {
 
-		_, err := stdin.Read(oneByte[:])
+		_, err := br.Read(oneByte[:])
 		if err != nil {
 			break
 		}
 
-		if *delete {
-			if tab.needDelete(oneByte[0]) {
+		if t.Delete {
+			if t.needDelete(oneByte[0]) {
 				continue
 			}
 			goto output
 		}
 
-		if *complement {
-			outByte := tab.getComplement(oneByte[0])
+		if t.Complement {
+			outByte := t.getComplement(oneByte[0])
 			oneByte[0] = outByte
 			goto output
 		}
 
-		if *squeezeRepeats {
-			if outByte, ok := tab.squeezeRepeats(oneByte[0]); ok {
+		if t.squeezeRepeats {
+			if outByte, ok := t.getSqueezeRepeats(oneByte[0]); ok {
 				continue
 			} else {
 				oneByte[0] = outByte
@@ -427,9 +434,15 @@ func Main(argv []string) {
 			goto output
 		}
 
-		oneByte[0] = tab.convert(oneByte[0])
+		oneByte[0] = t.convert(oneByte[0])
 
 	output:
-		os.Stdout.Write(oneByte[:])
+		w.Write(oneByte[:])
 	}
+}
+
+func Main(argv []string) {
+
+	tr, _ := New(argv)
+	tr.Tr(os.Stdin, os.Stdout)
 }
