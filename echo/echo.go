@@ -67,7 +67,7 @@ func Main(argv []string) {
 		Flags(flag.PosixShort).NewBool(false)
 
 	disable := command.Opt("E", "disable interpretation of backslash escapes (default)").
-		Flags(flag.PosixShort).NewBool(false)
+		Flags(flag.PosixShort).NewBool(true)
 
 	command.Parse(argv[1:])
 

@@ -9,6 +9,7 @@ import (
 	"github.com/guonaihong/coreutils/head"
 	"github.com/guonaihong/coreutils/paste"
 	"github.com/guonaihong/coreutils/sleep"
+	"github.com/guonaihong/coreutils/tac"
 	"github.com/guonaihong/coreutils/tail"
 	"github.com/guonaihong/coreutils/tee"
 	"github.com/guonaihong/coreutils/tr"
@@ -77,6 +78,10 @@ func main() {
 
 	parent.SubCommand("sleep", "Use the sleep subcommand", func() {
 		sleep.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("tac", "Use the tac subcommand", func() {
+		tac.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("tail", "Use the tail subcommand", func() {
