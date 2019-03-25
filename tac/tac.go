@@ -2,10 +2,11 @@ package tac
 
 import (
 	"bytes"
-	_ "fmt"
+	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
+	"io/ioutil"
 	"os"
 )
 
@@ -73,8 +74,39 @@ func printOffset(rs io.ReadSeeker, w io.Writer, buf []byte, start, end int64) er
 	return nil
 }
 
-// todo
 func readFromTailStdin(r io.Reader, w io.Writer, sep []byte) error {
+	all, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+
+	offset := make([]int, 0, 50)
+	for i := 0; i < len(all); {
+		pos := bytes.Index(all[i:], sep)
+		if pos == -1 {
+			break
+		}
+
+		offset = append(offset, i+pos)
+		i += pos + 1
+	}
+
+	if len(offset) == 0 {
+		offset = append(offset, len(all))
+	}
+
+	right := offset[len(offset)-1]
+
+	for i := len(offset) - 1; i > 0; i-- {
+		start := offset[i] + len(sep)
+		if start > len(all) {
+			start = len(all) - 1
+		}
+		w.Write(all[offset[i]+len(sep) : right])
+		//fmt.Printf("===\n")
+		right = offset[i]
+	}
+
 	return nil
 }
 
