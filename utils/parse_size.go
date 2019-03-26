@@ -13,6 +13,31 @@ func IsDecimalStr(s string, max int) (i int, have bool) {
 	return IsNeedStr(s, max, IsDecimal)
 }
 
+func IsOctal(b byte) bool {
+	if b >= '0' && b <= '7' {
+		return true
+	}
+
+	return false
+}
+
+func IsOctalStr(s string, max int) (i int, haveOctal bool) {
+	return IsNeedStr(s, max, IsOctal)
+}
+
+func IsXdigit(b byte) bool {
+	if b >= '0' && b <= '9' ||
+		b >= 'a' && b <= 'f' ||
+		b >= 'A' && b <= 'F' {
+		return true
+	}
+	return false
+}
+
+func IsXdigitStr(s string, max int) (i int, haveHex bool) {
+	return IsNeedStr(s, max, IsXdigit)
+}
+
 func IsNeedStr(s string, max int, is func(b byte) bool) (i int, have bool) {
 	for i = 0; i < len(s); i++ {
 		if i >= max {
