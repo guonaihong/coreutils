@@ -1,88 +1,54 @@
 package echo
 
 import (
-	"fmt"
+	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
+	"io"
 	"os"
 	"strconv"
 )
 
-func isxdigit(b byte) bool {
-	if b >= '0' && b <= '9' ||
-		b >= 'a' && b <= 'f' ||
-		b >= 'A' && b <= 'F' {
-		return true
-	}
-	return false
+type Echo struct {
+	NewLine *bool
+	Enable  *bool
+	Disable *bool
 }
 
-func isoctal(b byte) bool {
-	if b >= '0' && b <= '7' {
-		return true
-	}
+func New(argv []string) (*Echo, []string) {
 
-	return false
-}
+	e := Echo{}
 
-func isoctalStr(s string, max int) (i int, haveOctal bool) {
-	for i = 0; i < len(s); i++ {
-		if i >= max {
-			return i, haveOctal
-		}
-
-		if !isoctal(s[i]) {
-			return i, haveOctal
-		}
-
-		haveOctal = true
-	}
-
-	return i, haveOctal
-}
-
-func isxdigitStr(s string, max int) (i int, haveHex bool) {
-
-	for i = 0; i < len(s); i++ {
-		if i >= max {
-			return i, haveHex
-		}
-
-		if !isxdigit(s[i]) {
-			return i, haveHex
-		}
-
-		haveHex = true
-	}
-
-	return i, haveHex
-}
-
-func Main(argv []string) {
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 
-	newLine := command.Opt("n", "do not output the trailing newline").
+	e.NewLine = command.Opt("n", "do not output the trailing newline").
 		Flags(flag.PosixShort).NewBool(false)
 
-	enable := command.Opt("e", "enable interpretation of backslash escapes").
+	e.Enable = command.Opt("e", "enable interpretation of backslash escapes").
 		Flags(flag.PosixShort).NewBool(false)
 
-	disable := command.Opt("E", "disable interpretation of backslash escapes (default)").
+	e.Disable = command.Opt("E", "disable interpretation of backslash escapes (default)").
 		Flags(flag.PosixShort).NewBool(true)
 
 	command.Parse(argv[1:])
 
 	args := command.Args()
 
+	return &e, args
+}
+
+func (e *Echo) Echo(args []string, w io.Writer) {
+
 	c0 := uint64(0)
 	var err error
 
 	defer func() {
-		if *newLine == false {
-			fmt.Printf("\n")
+		if e.NewLine != nil && *e.NewLine == false {
+			w.Write([]byte{'\n'})
 		}
 	}()
 
-	if *enable {
+	if e.Enable != nil && *e.Enable {
+
 		printSlash := false
 		for k, s := range args {
 			for i := 0; i < len(s); i++ {
@@ -91,7 +57,7 @@ func Main(argv []string) {
 				if c == '\\' && i < len(s) {
 					i++
 					if i >= len(s) {
-						fmt.Printf("\\")
+						w.Write([]byte{'\\'})
 						goto notAnEscape
 					}
 
@@ -121,7 +87,7 @@ func Main(argv []string) {
 							goto notAnEscape
 						}
 
-						n, haveHex := isxdigitStr(s[i+1:], 2)
+						n, haveHex := utils.IsXdigitStr(s[i+1:], 2)
 						if !haveHex {
 							printSlash = true
 							goto notAnEscape
@@ -142,7 +108,7 @@ func Main(argv []string) {
 							goto notAnEscape
 						}
 
-						n, haveOctal := isoctalStr(s[i+1:], 3)
+						n, haveOctal := utils.IsOctalStr(s[i+1:], 3)
 						if !haveOctal {
 							printSlash = true
 							goto notAnEscape
@@ -158,36 +124,41 @@ func Main(argv []string) {
 						c = byte(c0)
 					case '\\':
 					default:
-						fmt.Print("\\")
+						w.Write([]byte{'\\'})
 					}
 
 				}
 
 			notAnEscape:
 				if printSlash {
-					fmt.Printf("\\")
+					w.Write([]byte{'\\'})
 					printSlash = false
 				}
 
 				// fmt.Printf("%c") is not the same as the putchar output in c
 				// in go fmt.Printf("%c\n", 172) -->  ¬
 				// in c  putchar(172)            -->  ?
-				os.Stdout.Write([]byte{c})
+				w.Write([]byte{c})
 			}
 			if k+1 != len(args) {
-				fmt.Print(" ")
+				w.Write([]byte{' '})
 			}
 		}
 		return
 	}
 
-	if *disable {
+	if e.Disable == nil || *e.Disable {
 		for i, s := range args {
-			fmt.Print(s)
+			w.Write([]byte(s))
 			if i+1 != len(args) {
-				fmt.Printf(" ")
+				w.Write([]byte{' '})
 			}
 		}
 	}
 
+}
+
+func Main(argv []string) {
+	echo, args := New(argv)
+	echo.Echo(args, os.Stdout)
 }
