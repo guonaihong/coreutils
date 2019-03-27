@@ -10,6 +10,8 @@ func main() {
 		"base32",
 		"base64",
 		"cat",
+		"echo",
+		"tr",
 		"cut",
 		"tail",
 		"head",

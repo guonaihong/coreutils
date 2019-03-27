@@ -2,7 +2,6 @@ package tac
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
@@ -81,6 +80,7 @@ func readFromTailStdin(r io.Reader, w io.Writer, sep []byte) error {
 	}
 
 	offset := make([]int, 0, 50)
+
 	for i := 0; i < len(all); {
 		pos := bytes.Index(all[i:], sep)
 		if pos == -1 {
@@ -93,20 +93,19 @@ func readFromTailStdin(r io.Reader, w io.Writer, sep []byte) error {
 
 	if len(offset) == 0 {
 		offset = append(offset, len(all))
+		sep = []byte("")
 	}
 
-	right := offset[len(offset)-1]
+	right := len(all)
 
-	for i := len(offset) - 1; i > 0; i-- {
+	for i := len(offset) - 1; i >= 0; i-- {
 		start := offset[i] + len(sep)
-		if start > len(all) {
-			start = len(all) - 1
-		}
-		w.Write(all[offset[i]+len(sep) : right])
-		//fmt.Printf("===\n")
-		right = offset[i]
+
+		w.Write(all[start:right])
+		right = offset[i] + len(sep)
 	}
 
+	w.Write(all[0:right])
 	return nil
 }
 
