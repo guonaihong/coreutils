@@ -73,7 +73,7 @@ func printOffset(rs io.ReadSeeker, w io.Writer, buf []byte, start, end int64) er
 	return nil
 }
 
-func readFromTailStdin(r io.Reader, w io.Writer, sep []byte) error {
+func readFromTailStdin(r io.Reader, w io.Writer, sep []byte, before bool) error {
 	all, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
@@ -99,21 +99,27 @@ func readFromTailStdin(r io.Reader, w io.Writer, sep []byte) error {
 	right := len(all)
 
 	for i := len(offset) - 1; i >= 0; i-- {
-		start := offset[i] + len(sep)
+		start := offset[i]
+		if !before {
+			start += len(sep)
+		}
 
 		w.Write(all[start:right])
-		right = offset[i] + len(sep)
+		right = offset[i]
+		if !before {
+			right += len(sep)
+		}
 	}
 
 	w.Write(all[0:right])
 	return nil
 }
 
-func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte) error {
+func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error {
 
 	tail, err := rs.Seek(0, 2)
 	if err != nil {
-		return err
+		return readFromTailStdin(rs, w, sep, before)
 	}
 
 	head := tail
@@ -188,8 +194,13 @@ func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte) error {
 }
 
 func (t *Tac) Tac(rs io.ReadSeeker, w io.Writer) error {
+	before := false
+	if t.Before != nil {
+		before = *t.Before
+	}
+
 	if t.Separator != nil {
-		err := readFromTail(rs, w, []byte(*t.Separator))
+		err := readFromTail(rs, w, []byte(*t.Separator), before)
 		if err != nil {
 			return err
 		}

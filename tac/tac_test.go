@@ -7,9 +7,6 @@ import (
 	"testing"
 )
 
-func TestBefore(t *testing.T) {
-}
-
 func TestRegex(t *testing.T) {
 }
 
@@ -18,13 +15,14 @@ func testReadFromTailStdin(src, dst string, sep string, t *testing.T) {
 	rs := strings.NewReader(src)
 	w := &bytes.Buffer{}
 
-	readFromTailStdin(rs, w, []byte(sep))
+	readFromTailStdin(rs, w, []byte(sep), false)
 
 	if w.String() != dst {
 		t.Fatalf("tac -s fail(%s, %d), need(%s)\n", w.String(), w.Len(), dst)
 	}
 }
 
+// tac -s string
 func testSeparator(src, dst string, sep string, t *testing.T) {
 	tac := Tac{}
 	tac.Separator = utils.String(sep)
@@ -81,4 +79,48 @@ func TestSeparator(t *testing.T) {
 	dst = `2
 1,`
 	testReadFromTailStdin(src, dst, ",", t)
+}
+
+//tac -b
+func testBeforeReadFromTailStdin(src, dst, sep string, t *testing.T) {
+	rs := strings.NewReader(src)
+	w := &bytes.Buffer{}
+
+	readFromTailStdin(rs, w, []byte(sep), true)
+
+	if w.String() != dst {
+		t.Fatalf("tac -s fail(%s, l:%d), need(%s)\n", w.String(), w.Len(), dst)
+	}
+}
+
+func TestBefore(t *testing.T) {
+	src := `1,2
+`
+	dst := `,2
+1`
+
+	testBeforeReadFromTailStdin(src, dst, ",", t)
+	src = `1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+`
+	dst = `
+
+10
+9
+8
+7
+6
+5
+4
+3
+21`
+	testBeforeReadFromTailStdin(src, dst, "\n", t)
 }

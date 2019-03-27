@@ -22,6 +22,7 @@ func main() {
 		"whoami",
 		"yes",
 		"sleep",
+		"tac",
 	}
 
 	for _, c := range command {
