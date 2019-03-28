@@ -2,6 +2,7 @@ package tac
 
 import (
 	"bytes"
+	_ "fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
@@ -88,7 +89,7 @@ func readFromTailStdin(r io.Reader, w io.Writer, sep []byte, before bool) error 
 		}
 
 		offset = append(offset, i+pos)
-		i += pos + 1
+		i += pos + len(sep)
 	}
 
 	if len(offset) == 0 {
@@ -147,7 +148,7 @@ func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error 
 		head -= minRead
 		rs.Seek(-minRead, 1)
 
-		t := n
+		right := n
 		h := n
 
 		for {
@@ -160,16 +161,17 @@ func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error 
 
 			if pos >= 0 {
 
-				w.Write(buf[pos+len(sep) : t])
-				if l := t - pos - len(sep); l > 0 {
+				start := pos + len(sep)
+				w.Write(buf[start:right])
+				if l := right - pos - len(sep); l > 0 {
 					tail -= int64(l)
 				}
 
-				if !bytes.Equal(buf[pos:t], sep) {
-					t = pos - len(sep)
+				if !bytes.Equal(buf[start:right], sep) {
+					right = start - len(sep) + 1
 				}
 
-				h = pos - 1
+				h = pos
 
 				if tail > head+minRead {
 					err = printOffset(rs, w, buf2, head+minRead, tail)
