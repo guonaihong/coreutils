@@ -2,7 +2,6 @@ package tac
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
@@ -69,7 +68,6 @@ func printOffset(rs io.ReadSeeker, w io.Writer, buf []byte, start, end int64) er
 			break
 		}
 
-		fmt.Printf("#######= (%s)\n", buf[:n])
 		w.Write(buf[:n])
 		start += int64(n)
 	}
@@ -128,7 +126,6 @@ func (t *Tac) readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before boo
 	buf := make([]byte, t.BufSize+len(sep))
 	buf2 := make([]byte, t.BufSize)
 
-	fmt.Printf("##################%d\n", tail)
 	for head > 0 {
 
 		minRead := head
@@ -152,7 +149,6 @@ func (t *Tac) readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before boo
 		right := n
 		h := n
 
-		fmt.Printf("======================:%d\n", minRead)
 		for {
 			pos := bytes.LastIndex(buf[:h], sep)
 
