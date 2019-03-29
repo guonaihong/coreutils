@@ -41,20 +41,17 @@ func New(argv []string) (*Tac, []string) {
 
 func printOffset(rs io.ReadSeeker, w io.Writer, buf []byte, start, end int64) error {
 
-	var err error
-	/*
-		curPos, err := rs.Seek(0, 1)
-		if err != nil {
-			return err
-		}
-	*/
+	curPos, err := rs.Seek(0, 1)
+	if err != nil {
+		return err
+	}
 
 	_, err = rs.Seek(start, 0)
 	if err != nil {
 		return err
 	}
 
-	defer rs.Seek(start, 0)
+	defer rs.Seek(curPos, 0)
 
 	for {
 
@@ -111,10 +108,8 @@ func readFromTailStdin(r io.Reader, w io.Writer, sep []byte, before bool) error 
 		}
 
 		w.Write(all[start:right])
-		right = offset[i]
-		if !before {
-			right += len(sep)
-		}
+
+		right = start
 	}
 
 	w.Write(all[0:right])
@@ -169,14 +164,12 @@ func (t *Tac) readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before boo
 			if pos >= 0 {
 
 				start := pos + len(sep)
-				w.Write(buf[start:right])
 
-				l := right - start
-				if l > 0 {
-					//tail -= int64(l)
-				}
-				fmt.Printf("%p, head = %d, pos = %d, start = %d, right = %d, right - start = %d, (%s)\n",
-					t, head, pos, start, right, right-start, buf[start:right])
+				/*
+					l := right - start
+						fmt.Printf("%p, head = %d, pos = %d, start = %d, right = %d, right - start = %d, (%s)\n",
+							t, head, pos, start, right, right-start, buf[start:])
+				*/
 
 				if !bytes.Equal(buf[start:right], sep) {
 					right = pos + len(sep)
@@ -184,17 +177,26 @@ func (t *Tac) readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before boo
 
 				h = pos
 
-				fmt.Printf("1.l = %d, tail = %d, head = %d, head + minRead = %d\n", l, tail, head, head+minRead)
+				/*
+					fmt.Printf("1.l = %d, tail = %d, head = %d, start = %d pos = %d, buf(%s)\n",
+						l, tail, head, int(head)+pos+len(sep), pos, buf[:n])
+				*/
 
-				if l >= 0 && tail > head+int64(pos) {
-					err = printOffset(rs, w, buf2, head+int64(pos), tail)
+				start = int(head) + pos
+
+				if !before {
+					start += len(sep)
+				}
+
+				if tail > int64(start) {
+					err = printOffset(rs, w, buf2, int64(start), tail)
 					if err != nil {
 						return err
 					}
 					//Move tail position
-					tail = head + int64(pos)
+					tail = int64(start)
 				}
-				fmt.Printf("2.l = %d, tail = %d, head = %d, head + minRead = %d\n", l, tail, head, head+minRead)
+				//fmt.Printf("2.l = %d, tail = %d, head = %d, start = %d\n", l, tail, head, int(head)+pos+len(sep))
 
 				if pos == 0 {
 					break
@@ -218,6 +220,10 @@ func (t *Tac) Tac(rs io.ReadSeeker, w io.Writer) error {
 
 	if t.BufSize == 0 {
 		t.BufSize = bufSize
+	}
+
+	if t.Separator != nil && 2*len(*t.Separator) > t.BufSize {
+		t.BufSize = 2 * len(*t.Separator)
 	}
 
 	if t.Separator != nil {

@@ -63,7 +63,7 @@ func TestSeparator(t *testing.T) {
 `
 	testReadFromTailStdin(src, dst, "\n", t)
 	testSeparator(src, dst, "\n", 0, t)
-	//testSeparator(src, dst, "\n", 3, t)
+	testSeparator(src, dst, "\n", 3, t)
 	//=============================
 
 	src = "123aaa456aaa789aaa\n"
@@ -72,24 +72,29 @@ func TestSeparator(t *testing.T) {
 
 	testReadFromTailStdin(src, dst, "aaa", t)
 	testSeparator(src, dst, "aaa", 0, t)
+	testSeparator(src, dst, "aaa", 6, t)
 	//=============================
 
 	src = "wwwwwwwwwwww"
 	testReadFromTailStdin(src, src, "aaa", t)
 	testSeparator(src, src, "aaa", 0, t)
+	testSeparator(src, src, "aaa", 3, t)
 
 	src = "1,2\n"
 	testReadFromTailStdin(src, src, "\n", t)
 	testSeparator(src, src, "\n", 0, t)
+	testSeparator(src, src, "\n", 4, t)
 
 	dst = `2
 1,`
 	testReadFromTailStdin(src, dst, ",", t)
 	testSeparator(src, dst, ",", 0, t)
+	testSeparator(src, dst, ",", 3, t)
 
 	src = `wwwwww`
 	testReadFromTailStdin(src, src, "www", t)
 	testSeparator(src, src, "www", 0, t)
+	testSeparator(src, src, "www", 3, t)
 }
 
 //tac -b
@@ -105,10 +110,11 @@ func testBeforeReadFromTailStdin(src, dst, sep string, t *testing.T) {
 }
 
 //tac -b
-func testSeparatorBefore(src, dst, sep string, t *testing.T) {
+func testSeparatorBefore(src, dst, sep string, bufSize int, t *testing.T) {
 	tac := Tac{}
 	tac.Separator = utils.String(sep)
 	tac.Before = utils.Bool(true)
+	tac.BufSize = bufSize
 
 	rs := strings.NewReader(src)
 	w := &bytes.Buffer{}
@@ -127,6 +133,7 @@ func TestBefore(t *testing.T) {
 1`
 
 	testBeforeReadFromTailStdin(src, dst, ",", t)
+	testSeparatorBefore(src, dst, ",", 3, t)
 
 	src = `1
 2
@@ -151,7 +158,9 @@ func TestBefore(t *testing.T) {
 3
 21`
 	testBeforeReadFromTailStdin(src, dst, "\n", t)
+	testSeparatorBefore(src, dst, "\n", 3, t)
 
 	src = `wwwwwwwwwwwwwww`
 	testBeforeReadFromTailStdin(src, src, "www", t)
+	testSeparatorBefore(src, src, "www", 3, t)
 }
