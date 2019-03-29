@@ -2,7 +2,7 @@ package tac
 
 import (
 	"bytes"
-	_ "fmt"
+	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
@@ -16,6 +16,7 @@ type Tac struct {
 	Before    *bool
 	Regex     *string
 	Separator *string
+	BufSize   int
 }
 
 func New(argv []string) (*Tac, []string) {
@@ -40,17 +41,20 @@ func New(argv []string) (*Tac, []string) {
 
 func printOffset(rs io.ReadSeeker, w io.Writer, buf []byte, start, end int64) error {
 
-	curPos, err := rs.Seek(0, 1)
-	if err != nil {
-		return err
-	}
+	var err error
+	/*
+		curPos, err := rs.Seek(0, 1)
+		if err != nil {
+			return err
+		}
+	*/
 
 	_, err = rs.Seek(start, 0)
 	if err != nil {
 		return err
 	}
 
-	defer rs.Seek(curPos, 0)
+	defer rs.Seek(start, 0)
 
 	for {
 
@@ -68,6 +72,7 @@ func printOffset(rs io.ReadSeeker, w io.Writer, buf []byte, start, end int64) er
 			break
 		}
 
+		fmt.Printf("#######= (%s)\n", buf[:n])
 		w.Write(buf[:n])
 		start += int64(n)
 	}
@@ -116,7 +121,7 @@ func readFromTailStdin(r io.Reader, w io.Writer, sep []byte, before bool) error 
 	return nil
 }
 
-func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error {
+func (t *Tac) readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error {
 
 	tail, err := rs.Seek(0, 2)
 	if err != nil {
@@ -125,14 +130,15 @@ func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error 
 
 	head := tail
 
-	buf := make([]byte, bufSize+len(sep))
-	buf2 := make([]byte, bufSize)
+	buf := make([]byte, t.BufSize+len(sep))
+	buf2 := make([]byte, t.BufSize)
 
+	fmt.Printf("##################%d\n", tail)
 	for head > 0 {
 
 		minRead := head
-		if minRead > bufSize {
-			minRead = bufSize
+		if minRead > int64(t.BufSize) {
+			minRead = int64(t.BufSize)
 		}
 
 		_, err := rs.Seek(-minRead, 1)
@@ -151,6 +157,7 @@ func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error 
 		right := n
 		h := n
 
+		fmt.Printf("======================:%d\n", minRead)
 		for {
 			pos := bytes.LastIndex(buf[:h], sep)
 
@@ -163,23 +170,31 @@ func readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error 
 
 				start := pos + len(sep)
 				w.Write(buf[start:right])
-				if l := right - pos - len(sep); l > 0 {
-					tail -= int64(l)
+
+				l := right - start
+				if l > 0 {
+					//tail -= int64(l)
 				}
+				fmt.Printf("%p, head = %d, pos = %d, start = %d, right = %d, right - start = %d, (%s)\n",
+					t, head, pos, start, right, right-start, buf[start:right])
 
 				if !bytes.Equal(buf[start:right], sep) {
-					right = start - len(sep) + 1
+					right = pos + len(sep)
 				}
 
 				h = pos
 
-				if tail > head+minRead {
-					err = printOffset(rs, w, buf2, head+minRead, tail)
+				fmt.Printf("1.l = %d, tail = %d, head = %d, head + minRead = %d\n", l, tail, head, head+minRead)
+
+				if l >= 0 && tail > head+int64(pos) {
+					err = printOffset(rs, w, buf2, head+int64(pos), tail)
 					if err != nil {
 						return err
 					}
-					tail = head + minRead
+					//Move tail position
+					tail = head + int64(pos)
 				}
+				fmt.Printf("2.l = %d, tail = %d, head = %d, head + minRead = %d\n", l, tail, head, head+minRead)
 
 				if pos == 0 {
 					break
@@ -201,8 +216,12 @@ func (t *Tac) Tac(rs io.ReadSeeker, w io.Writer) error {
 		before = *t.Before
 	}
 
+	if t.BufSize == 0 {
+		t.BufSize = bufSize
+	}
+
 	if t.Separator != nil {
-		err := readFromTail(rs, w, []byte(*t.Separator), before)
+		err := t.readFromTail(rs, w, []byte(*t.Separator), before)
 		if err != nil {
 			return err
 		}
