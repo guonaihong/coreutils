@@ -35,6 +35,7 @@ If you want to use the cat command
 * paste [详情](./paste/README.md)
 * tee [详情](./tee/README.md)
 * tail [详情](./tail/README.md)
+* tail [详情](./tac/README.md)
 * tr [详情](./tr/README.md)
 * true [详情](./true/README.md)
 * uniq [详情](./uniq/README.md)

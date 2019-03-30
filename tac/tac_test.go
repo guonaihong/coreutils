@@ -7,7 +7,44 @@ import (
 	"testing"
 )
 
+func testRegex(dst, src string, sep string, t *testing.T) {
+	rs := strings.NewReader(src)
+	w := &bytes.Buffer{}
+
+	tac := Tac{}
+	tac.Separator = utils.String(sep)
+	tac.Regex = utils.Bool(true)
+	tac.Tac(rs, w)
+
+	if w.String() != dst {
+		t.Fatalf("tac -r -s regexp-string fail(%s, %d), need(%s)\n", w.String(), w.Len(), dst)
+	}
+}
+
 func TestRegex(t *testing.T) {
+	src := `1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+`
+	dst := `
+
+10
+9
+8
+7
+6
+5
+4
+3
+21`
+	testRegex(dst, src, `\d+`, t)
 }
 
 // tac -s string
@@ -15,7 +52,8 @@ func testReadFromTailStdin(src, dst string, sep string, t *testing.T) {
 	rs := strings.NewReader(src)
 	w := &bytes.Buffer{}
 
-	readFromTailStdin(rs, w, []byte(sep), false)
+	tac := Tac{}
+	tac.readFromTailStdin(rs, w, []byte(sep), false)
 
 	if w.String() != dst {
 		t.Fatalf("tac -s fail(%s, %d), need(%s)\n", w.String(), w.Len(), dst)
@@ -89,7 +127,7 @@ func TestSeparator(t *testing.T) {
 1,`
 	testReadFromTailStdin(src, dst, ",", t)
 	testSeparator(src, dst, ",", 0, t)
-	testSeparator(src, dst, ",", 3, t)
+	testSeparator(src, dst, ",", 2, t)
 
 	src = `wwwwww`
 	testReadFromTailStdin(src, src, "www", t)
@@ -102,7 +140,8 @@ func testBeforeReadFromTailStdin(src, dst, sep string, t *testing.T) {
 	rs := strings.NewReader(src)
 	w := &bytes.Buffer{}
 
-	readFromTailStdin(rs, w, []byte(sep), true)
+	tac := Tac{}
+	tac.readFromTailStdin(rs, w, []byte(sep), true)
 
 	if w.String() != dst {
 		t.Fatalf("tac -s fail(%s, l:%d), need(%s)\n", w.String(), w.Len(), dst)

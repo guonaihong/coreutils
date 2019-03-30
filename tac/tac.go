@@ -7,14 +7,16 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 )
 
 const bufSize = 8092
 
 type Tac struct {
 	Before    *bool
-	Regex     *string
+	Regex     *bool
 	Separator *string
+	pattern   *regexp.Regexp
 	BufSize   int
 }
 
@@ -26,7 +28,7 @@ func New(argv []string) (*Tac, []string) {
 		NewBool(false)
 	t.Regex = command.Opt("r, regex", "interpret the separator as a regular expression").
 		Flags(flag.PosixShort).
-		NewString("")
+		NewBool(false)
 	t.Separator = command.Opt("s, separator", "use STRING as the separator instead of newline").
 		Flags(flag.PosixShort).
 		NewString("\n")
@@ -74,22 +76,37 @@ func printOffset(rs io.ReadSeeker, w io.Writer, buf []byte, start, end int64) er
 	return nil
 }
 
-func readFromTailStdin(r io.Reader, w io.Writer, sep []byte, before bool) error {
+func (t *Tac) readFromTailStdin(r io.Reader, w io.Writer, sep []byte, before bool) error {
 	all, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
 	}
 
 	offset := make([]int, 0, 50)
+	seps := make([]int, 0, 50)
 
 	for i := 0; i < len(all); {
-		pos := bytes.Index(all[i:], sep)
-		if pos == -1 {
-			break
+		pos := 0
+		sepLen := len(sep)
+
+		if t.pattern != nil {
+			p := t.pattern.FindIndex(all[i:])
+			if p == nil {
+				break
+			}
+			sepLen = p[1] - p[0]
+			pos = p[0]
+			seps = append(seps, sepLen)
+		} else {
+
+			pos = bytes.Index(all[i:], sep)
+			if pos == -1 {
+				break
+			}
 		}
 
 		offset = append(offset, i+pos)
-		i += pos + len(sep)
+		i += pos + sepLen
 	}
 
 	if len(offset) == 0 {
@@ -101,8 +118,13 @@ func readFromTailStdin(r io.Reader, w io.Writer, sep []byte, before bool) error 
 
 	for i := len(offset) - 1; i >= 0; i-- {
 		start := offset[i]
+		sepLen := len(sep)
+		if len(seps) > 0 {
+			sepLen = seps[i]
+		}
+
 		if !before {
-			start += len(sep)
+			start += sepLen
 		}
 
 		w.Write(all[start:right])
@@ -116,9 +138,13 @@ func readFromTailStdin(r io.Reader, w io.Writer, sep []byte, before bool) error 
 
 func (t *Tac) readFromTail(rs io.ReadSeeker, w io.Writer, sep []byte, before bool) error {
 
+	if t.pattern != nil {
+		return t.readFromTailStdin(rs, w, sep, before)
+	}
+
 	tail, err := rs.Seek(0, 2)
 	if err != nil {
-		return readFromTailStdin(rs, w, sep, before)
+		return t.readFromTailStdin(rs, w, sep, before)
 	}
 
 	head := tail
@@ -223,6 +249,10 @@ func (t *Tac) Tac(rs io.ReadSeeker, w io.Writer) error {
 	}
 
 	if t.Separator != nil {
+		if t.Regex != nil && *t.Regex {
+			t.pattern = regexp.MustCompile(*t.Separator)
+		}
+
 		err := t.readFromTail(rs, w, []byte(*t.Separator), before)
 		if err != nil {
 			return err
