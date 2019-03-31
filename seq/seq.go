@@ -29,7 +29,7 @@ func New(argv []string) (*Seq, []string) {
 	seq.Format = command.Opt("f, format", "use printf style floating-point FORMAT").
 		Flags(flag.PosixShort).NewString("")
 	seq.Separator = command.Opt("s, separator",
-		"use STRING to separate numbers (default: \n)").
+		"use STRING to separate numbers (default: \\n)").
 		Flags(flag.PosixShort).NewString("\n")
 	seq.EqualWidth = command.Opt("w, equal-width",
 		"equalize width by padding with leading zeroes").
@@ -58,7 +58,7 @@ func New(argv []string) (*Seq, []string) {
 	return &seq, args
 }
 
-func (s *Seq) check(format string, isInt *bool) error {
+func (s *Seq) check(format string) error {
 	count := strings.Count(format, "%")
 	if count == 0 {
 		return fmt.Errorf(`seq: format '%s' has no %% directive`, format)
@@ -70,9 +70,9 @@ func (s *Seq) check(format string, isInt *bool) error {
 
 	pos := strings.Index(format, "%")
 	switch format[pos+1 : pos+2] {
-	case "e", "f", "a", "E", "F", "A":
+	case "e", "f", "E", "F":
+	//case "a", "A": //todo
 	case "G", "g":
-		*isInt = true
 	default:
 		return fmt.Errorf("format %s has unknown %%%c directive",
 			format, format[pos+1])
@@ -97,23 +97,24 @@ func (s *Seq) Seq(w io.Writer) error {
 		return fmt.Errorf("seq: invalid floating point argument: %s", s.last)
 	}
 
-	format := "%d"
-	if s.Format != nil {
+	format := "%g"
+	if s.Format != nil && len(*s.Format) > 0 {
 		format = *s.Format
 	}
 
-	isInt := false
-	if err = s.check(format, &isInt); err != nil {
+	if err = s.check(format); err != nil {
 		return err
 	}
 
 	var v interface{}
+	separator := "\n"
+	if s.Separator != nil {
+		separator = *s.Separator
+	}
+
 	for ; first <= last; first += step {
 		v = first
-		if isInt {
-			//v = int(first)
-		}
-		fmt.Fprintf(w, format+"\n", v)
+		fmt.Fprintf(w, format+separator, v)
 	}
 
 	return nil
