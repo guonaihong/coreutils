@@ -2,7 +2,7 @@
 
 #### install
 ```
-env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/cat/tac
+env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/tac/tac
 ```
 
 ####命令行选项

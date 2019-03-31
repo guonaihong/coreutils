@@ -8,10 +8,12 @@ import (
 	"github.com/guonaihong/coreutils/echo"
 	"github.com/guonaihong/coreutils/head"
 	"github.com/guonaihong/coreutils/paste"
+	"github.com/guonaihong/coreutils/seq"
 	"github.com/guonaihong/coreutils/sleep"
 	"github.com/guonaihong/coreutils/tac"
 	"github.com/guonaihong/coreutils/tail"
 	"github.com/guonaihong/coreutils/tee"
+	"github.com/guonaihong/coreutils/touch"
 	"github.com/guonaihong/coreutils/tr"
 	"github.com/guonaihong/coreutils/true"
 	"github.com/guonaihong/coreutils/uniq"
@@ -36,18 +38,6 @@ func main() {
 		paste.Main(os.Args[1:])
 	})
 
-	parent.SubCommand("uniq", "Use the uniq subcommand", func() {
-		uniq.Main(os.Args[1:])
-	})
-
-	parent.SubCommand("tr", "Use the tr subcommand", func() {
-		tr.Main(os.Args[1:])
-	})
-
-	parent.SubCommand("true", "Use the true subcommand", func() {
-		true.Main(os.Args[1:])
-	})
-
 	parent.SubCommand("basename", "Use the basename subcommand", func() {
 		basename.Main(os.Args[1:])
 	})
@@ -64,16 +54,8 @@ func main() {
 		head.Main(os.Args[1:])
 	})
 
-	parent.SubCommand("tee", "Use the tee subcommand", func() {
-		tee.Main(os.Args[1:])
-	})
-
-	parent.SubCommand("whoami", "Use the whoami subcommand", func() {
-		whoami.Main(os.Args[1:])
-	})
-
-	parent.SubCommand("yes", "Use the yes subcommand", func() {
-		yes.Main(os.Args[1:])
+	parent.SubCommand("seq", "Use the seq subcommand", func() {
+		seq.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("sleep", "Use the sleep subcommand", func() {
@@ -86,6 +68,34 @@ func main() {
 
 	parent.SubCommand("tail", "Use the tail subcommand", func() {
 		tail.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("tee", "Use the tee subcommand", func() {
+		tee.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("touch", "Use the touch subcommand", func() {
+		touch.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("tr", "Use the tr subcommand", func() {
+		tr.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("true", "Use the true subcommand", func() {
+		true.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("uniq", "Use the uniq subcommand", func() {
+		uniq.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("whoami", "Use the whoami subcommand", func() {
+		whoami.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("yes", "Use the yes subcommand", func() {
+		yes.Main(os.Args[1:])
 	})
 
 	parent.Parse(os.Args[1:])
