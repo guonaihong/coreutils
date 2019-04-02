@@ -9,6 +9,12 @@ import (
 const fileName1 = "touch-test-file1"
 const fileName2 = "touch-test-file2"
 
+func testParseTime(t *testing.T) {
+}
+
+func TestParseTime(t *testing.T) {
+}
+
 //touch -c file
 func TestCreateFileNoCreate(t *testing.T) {
 	touch := Touch{}
