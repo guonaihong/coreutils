@@ -6,6 +6,7 @@ import (
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"os"
+	"syscall"
 	"time"
 )
 
@@ -25,7 +26,7 @@ type Touch struct {
 	Date          *string
 	NoDereference *bool
 	ModifyTime    *bool
-	Reference     *bool
+	Reference     *string
 	Stamp         *string
 	Time          *string
 }
@@ -96,7 +97,7 @@ func New(argv []string) (*Touch, []string) {
 
 	touch.Reference = command.Opt("r, referenced",
 		"use this file's times instead of current time").
-		Flags(flag.PosixShort).NewBool(false)
+		Flags(flag.PosixShort).NewString("")
 
 	touch.Stamp = command.Opt("t", "use [[CC]YY]MMDDhhmm[.ss] instead of current time").
 		Flags(flag.PosixShort).NewString("")
@@ -104,7 +105,7 @@ func New(argv []string) (*Touch, []string) {
 	touch.Time = command.Opt("time", "change the specified time:\n"+
 		"WORD is access, atime, or use: equivalent to -a\n"+
 		"WORD is modify or mtime: equivalent to -m").
-		Flags(flag.PosixShort).NewString("")
+		NewString("")
 
 	command.Parse(argv[1:])
 
@@ -118,6 +119,37 @@ func isNotExist(name string) bool {
 		return true
 	}
 	return false
+}
+
+func statTimes(name string) (atime, mtime, ctime time.Time, err error) {
+	fi, err := os.Stat(name)
+	if err != nil {
+		return
+	}
+
+	mtime = fi.ModTime()
+	stat, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		now := time.Now()
+		return now, now, now, nil
+	}
+
+	atime = time.Unix(int64(stat.Atim.Sec), int64(stat.Atim.Nsec))
+	ctime = time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec))
+	return
+}
+
+func (t *Touch) parseTimeArgs() {
+	if t.Time == nil || len(*t.Time) == 0 {
+		return
+	}
+
+	switch *t.Time {
+	case "atime", "access", "use":
+		t.AccessTime = utils.Bool(true)
+	case "mtime", "modify":
+		t.ModifyTime = utils.Bool(true)
+	}
 }
 
 func (t *Touch) Touch(name string) error {
@@ -142,6 +174,25 @@ func (t *Touch) Touch(name string) error {
 		}
 
 		atime, mtime = t, t
+	}
+
+	t.parseTimeArgs()
+
+	var err error
+	if t.Reference != nil && len(*t.Reference) > 0 {
+		atime, mtime, _, err = statTimes(*t.Reference)
+		if err != nil {
+			return err
+		}
+	}
+
+	a, m, _, _ := statTimes(name)
+	if t.AccessTime != nil && *t.AccessTime {
+		atime = a
+	}
+
+	if t.ModifyTime != nil && *t.ModifyTime {
+		mtime = m
 	}
 
 	os.Chtimes(name, atime, mtime)
