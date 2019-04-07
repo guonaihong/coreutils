@@ -6,6 +6,8 @@ import (
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"os"
+	"regexp"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -21,14 +23,104 @@ const (
 )
 
 type Touch struct {
-	AccessTime    *bool
-	NoCreate      *bool
-	Date          *string
-	NoDereference *bool
-	ModifyTime    *bool
-	Reference     *string
-	Stamp         *string
-	Time          *string
+	AccessTime       *bool
+	NoCreate         *bool
+	Date             *string
+	NoDereference    *bool
+	ModifyTime       *bool
+	Reference        *string
+	Stamp            *string
+	Time             *string
+	r                *regexp.Regexp
+	month2NumReplace *strings.Replacer
+}
+
+var shortMonthNames = []string{
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"May",
+	"Jun",
+	"Jul",
+	"Aug",
+	"Sep",
+	"Oct",
+	"Nov",
+	"Dec",
+}
+
+var longMonthNames = []string{
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
+}
+
+func (t *Touch) parseDate(d string) (time.Time, error) {
+	if t.r == nil {
+		// parse-->1 May 2005 10:22
+
+		p := `(\d+ %s)?\s*(\d{4})?\s*(\d{2}:\d{2})?`
+
+		p = fmt.Sprintf(p, strings.Join(append(shortMonthNames,
+			longMonthNames...), "|"))
+
+		fmt.Printf("%s\n", p) //debug
+
+		t.r = regexp.MustCompile(p)
+
+		month2Num := make([]string, 0, 0,
+			len(shortMonthNames)*4)
+
+		if t.month2NumReplace == nil {
+
+			for k := range shortMonthNames {
+
+				n := fmt.Sprintf("%02d", k+1)
+				month2Num = append(month2Num, longMonthNames[k], n)
+				month2Num = append(month2Num, shortMonthNames[k], n)
+			}
+
+			t.month2NumReplace = strings.NewReplacer(month2Num)
+		}
+
+	}
+
+	res := t.r.FindStringSubmatch(d)
+	now := time.Now()
+	year, month, day := now.Date()
+
+	//month-day
+	if len(res[1]) == 0 {
+		res[1] = fmt.Sprintf("%02d-%02d", month, day)
+	} else {
+		res[1] = t.month2NumReplace.Replace(res[1])
+		rs := strings.Split(res[1])
+		//swap day month to month-day
+		res[1] = fmt.Printf("%02d-%02d", rs[1], rs[0])
+	}
+
+	// year
+	if len(res[2]) == 0 {
+		res[2] = fmt.Sprintf("%d", year)
+	}
+
+	// hour:minute
+	if len(res[3]) == 0 {
+		res[3] = fmt.Sprintf("%02d:%02d", now.Hour(), now.Minute())
+	}
+
+	return time.ParseInLocation("2006-01-02T15:04:05Z",
+		fmt.Sprintf("%s-%sT%s:00Z", res[2], res[1], res[3]))
 }
 
 func parseTime(s string) (time.Time, error) {
@@ -173,6 +265,14 @@ func (t *Touch) Touch(name string) error {
 			return err
 		}
 
+		atime, mtime = t, t
+	}
+
+	if t.Date != nil && len(*t.Data) > 0 {
+		t, err = t.parseDate(t.Date)
+		if err != nil {
+			return err
+		}
 		atime, mtime = t, t
 	}
 
