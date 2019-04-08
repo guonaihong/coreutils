@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
+	"golang.org/x/sys/unix"
 	"os"
 	"regexp"
 	"strings"
@@ -33,6 +34,7 @@ type Touch struct {
 	Time             *string
 	r                *regexp.Regexp
 	month2NumReplace *strings.Replacer
+	debug            *bool
 }
 
 var shortMonthNames = []string{
@@ -65,20 +67,22 @@ var longMonthNames = []string{
 	"December",
 }
 
+func (t *Touch) openDebug() bool {
+	return t.debug != nil && *t.debug
+}
+
 func (t *Touch) parseDate(d string) (time.Time, error) {
 	if t.r == nil {
 		// parse-->1 May 2005 10:22
 
-		p := `(\d+ %s)?\s*(\d{4})?\s*(\d{2}:\d{2})?`
+		p := `(\d+ (?:%s))?\s*(\d{4})?\s*(\d{2}:\d{2})?`
 
 		p = fmt.Sprintf(p, strings.Join(append(shortMonthNames,
 			longMonthNames...), "|"))
 
-		fmt.Printf("%s\n", p) //debug
-
 		t.r = regexp.MustCompile(p)
 
-		month2Num := make([]string, 0, 0,
+		month2Num := make([]string, 0,
 			len(shortMonthNames)*4)
 
 		if t.month2NumReplace == nil {
@@ -90,9 +94,12 @@ func (t *Touch) parseDate(d string) (time.Time, error) {
 				month2Num = append(month2Num, shortMonthNames[k], n)
 			}
 
-			t.month2NumReplace = strings.NewReplacer(month2Num)
+			t.month2NumReplace = strings.NewReplacer(month2Num...)
 		}
 
+		if t.openDebug() {
+			fmt.Printf("regexp-->(%s)\n", p) //debug
+		}
 	}
 
 	res := t.r.FindStringSubmatch(d)
@@ -104,9 +111,9 @@ func (t *Touch) parseDate(d string) (time.Time, error) {
 		res[1] = fmt.Sprintf("%02d-%02d", month, day)
 	} else {
 		res[1] = t.month2NumReplace.Replace(res[1])
-		rs := strings.Split(res[1])
+		rs := strings.Split(res[1], " ")
 		//swap day month to month-day
-		res[1] = fmt.Printf("%02d-%02d", rs[1], rs[0])
+		res[1] = fmt.Sprintf("%02s-%02s", rs[1], rs[0])
 	}
 
 	// year
@@ -119,8 +126,14 @@ func (t *Touch) parseDate(d string) (time.Time, error) {
 		res[3] = fmt.Sprintf("%02d:%02d", now.Hour(), now.Minute())
 	}
 
+	todoParse := fmt.Sprintf("%s-%sT%s:00Z", res[2], res[1], res[3])
+	if t.openDebug() {
+		fmt.Printf("todoParse = %s\n", todoParse)
+	}
+
 	return time.ParseInLocation("2006-01-02T15:04:05Z",
-		fmt.Sprintf("%s-%sT%s:00Z", res[2], res[1], res[3]))
+		todoParse,
+		time.Local)
 }
 
 func parseTime(s string) (time.Time, error) {
@@ -163,6 +176,14 @@ func parseTime(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339, timeBuf.String())
 }
 
+func (t *Touch) IsNoDereference() bool {
+	return t.NoDereference != nil && *t.NoDereference
+}
+
+func (t *Touch) IsReference() bool {
+	return t.Reference != nil && len(*t.Reference) > 0
+}
+
 func New(argv []string) (*Touch, []string) {
 	touch := Touch{}
 
@@ -199,6 +220,8 @@ func New(argv []string) (*Touch, []string) {
 		"WORD is modify or mtime: equivalent to -m").
 		NewString("")
 
+	touch.debug = command.Opt("debug", "debug mode").NewBool(false)
+
 	command.Parse(argv[1:])
 
 	args := command.Args()
@@ -231,7 +254,7 @@ func statTimes(name string) (atime, mtime, ctime time.Time, err error) {
 	return
 }
 
-func (t *Touch) parseTimeArgs() {
+func (t *Touch) parseTimeOpt() {
 	if t.Time == nil || len(*t.Time) == 0 {
 		return
 	}
@@ -268,35 +291,61 @@ func (t *Touch) Touch(name string) error {
 		atime, mtime = t, t
 	}
 
-	if t.Date != nil && len(*t.Data) > 0 {
-		t, err = t.parseDate(t.Date)
+	if t.Date != nil && len(*t.Date) > 0 {
+		t, err := t.parseDate(*t.Date)
 		if err != nil {
 			return err
 		}
 		atime, mtime = t, t
 	}
 
-	t.parseTimeArgs()
+	// -time
+	t.parseTimeOpt()
 
-	var err error
-	if t.Reference != nil && len(*t.Reference) > 0 {
-		atime, mtime, _, err = statTimes(*t.Reference)
+	var st unix.Stat_t
+
+	if t.IsReference() {
+		name = *t.Reference
+	}
+
+	var a, m time.Time
+
+	if t.IsNoDereference() {
+		err := unix.Lstat(name, &st)
 		if err != nil {
 			return err
 		}
+
+		a = time.Unix(st.Atim.Sec, st.Atim.Nsec)
+		m = time.Unix(st.Atim.Sec, st.Atim.Nsec)
+	} else {
+		a, m, _, _ = statTimes(name)
 	}
 
-	a, m, _, _ := statTimes(name)
-	if t.AccessTime != nil && *t.AccessTime {
+	// get atime mtime
+	if t.AccessTime != nil && *t.AccessTime || t.IsReference() {
 		atime = a
 	}
 
-	if t.ModifyTime != nil && *t.ModifyTime {
+	if t.ModifyTime != nil && *t.ModifyTime || t.IsReference() {
 		mtime = m
+	}
+
+	if t.IsNoDereference() {
+
+		return unix.Lutimes(name,
+			[]unix.Timeval{
+				Time2Timeval(atime),
+				Time2Timeval(mtime)})
 	}
 
 	os.Chtimes(name, atime, mtime)
 	return nil
+}
+
+func Time2Timeval(t time.Time) unix.Timeval {
+	return unix.Timeval{Sec: int64(t.Second()),
+		Usec: int64(t.Nanosecond() / 1000)}
 }
 
 func Main(argv []string) {
