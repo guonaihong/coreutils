@@ -44,3 +44,6 @@ If you want to use the cat command
 * yes [详情](./yes/README.md)
 * seq [详情](./seq/README.md)
 * sleep [详情](./sleep/README.md)
+
+## progress
+progress = 18 / 86 = 20%
