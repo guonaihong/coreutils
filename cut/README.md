@@ -10,6 +10,27 @@ env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/cut/cut
 
 #### 命令行选项
 ```console
+Usage of cut:
+  -b, --bytes string
+    	select only these bytes
+  -c, --characters string
+    	select only these characters
+  -complement
+    	complement the set of selected bytes, characters
+    	or fields
+  -d, --delimiter string
+    	use DELIM instead of TAB for field delimiter
+  -f, --fields string
+    	select only these fields;  also print any line
+    	 that contains no delimiter character, unless
+    	 the -s option is specified
+  -output-delimiter string
+    	use STRING as the output delimiter
+    	the default is to use the input delimiter
+  -s, --only-delimited
+    	do not print lines not containing delimiters
+  -zero-terminated
+    	line delimiter is NUL, not newline
 ```
 
 #### Example

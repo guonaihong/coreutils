@@ -34,6 +34,7 @@ If you want to use the cat command
 * head [详情](./head/README.md)
 * paste [详情](./paste/README.md)
 * tee [详情](./tee/README.md)
+* touch [详情](./touch/README.md)
 * tail [详情](./tail/README.md)
 * tac [详情](./tac/README.md)
 * tr [详情](./tr/README.md)

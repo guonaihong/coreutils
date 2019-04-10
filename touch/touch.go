@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sys/unix"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -106,24 +107,31 @@ func (t *Touch) parseDate(d string) (time.Time, error) {
 	now := time.Now()
 	year, month, day := now.Date()
 
+	// hour:minute
+	if len(res[3]) == 0 {
+		res[3] = fmt.Sprintf("00:00")
+	}
+
 	//month-day
-	if len(res[1]) == 0 {
-		res[1] = fmt.Sprintf("%02d-%02d", month, day)
-	} else {
+	if len(res[1]) != 0 {
 		res[1] = t.month2NumReplace.Replace(res[1])
 		rs := strings.Split(res[1], " ")
 		//swap day month to month-day
 		res[1] = fmt.Sprintf("%02s-%02s", rs[1], rs[0])
+		goto next
 	}
 
+	// len(res[1]) == 0
+	if len(res[3]) > 0 {
+		res[1] = fmt.Sprintf("%02d-%02d", month, day)
+	} else {
+		res[1] = fmt.Sprintf("00-00")
+	}
+
+next:
 	// year
-	if len(res[2]) == 0 {
+	if len(res[2]) == 0 && (len(res[1]) > 0 || len(res[3]) > 0) {
 		res[2] = fmt.Sprintf("%d", year)
-	}
-
-	// hour:minute
-	if len(res[3]) == 0 {
-		res[3] = fmt.Sprintf("%02d:%02d", now.Hour(), now.Minute())
 	}
 
 	todoParse := fmt.Sprintf("%s-%sT%s:00Z", res[2], res[1], res[3])
@@ -133,10 +141,10 @@ func (t *Touch) parseDate(d string) (time.Time, error) {
 
 	return time.ParseInLocation("2006-01-02T15:04:05Z",
 		todoParse,
-		time.Local)
+		time.UTC)
 }
 
-func parseTime(s string) (time.Time, error) {
+func (t *Touch) parseTime(s string) (time.Time, error) {
 
 	timeBuf := bytes.NewBuffer(make([]byte, 0, 15))
 
@@ -145,11 +153,20 @@ func parseTime(s string) (time.Time, error) {
 	case 15, 12, 13, 10, 11, 8:
 		if len(s) == 13 || len(s) == 10 {
 			y = YY
+			n, err := strconv.Atoi(s[0:y])
+			if err != nil {
+				return time.Time{}, nil
+			}
+			if n >= 69 {
+				timeBuf.WriteString("19")
+			} else {
+				timeBuf.WriteString("20")
+			}
 		}
 
 		if len(s) == 11 || len(s) == 8 {
 			y = 0
-			timeBuf.WriteString(fmt.Sprintf("%d", time.Now().Year()+1900))
+			timeBuf.WriteString(fmt.Sprintf("%d", time.Now().Year()))
 		}
 
 		timeBuf.WriteString(s[0:y])
@@ -163,7 +180,10 @@ func parseTime(s string) (time.Time, error) {
 		timeBuf.WriteString(s[y+m+DD+HH : y+m+DD+HH+MM])
 		timeBuf.WriteByte(':')
 
-		if len(s) == 15 || len(s) == 13 || len(s) == 11 || len(s) == 8 {
+		if len(s) == 15 || len(s) == 13 || len(s) == 11 {
+			if t.openDebug() {
+				fmt.Printf("y+m+DD+HH+MM+1 = %d\n", y+m+DD+HH+MM+1)
+			}
 			timeBuf.WriteString(s[y+m+DD+HH+MM+1 : len(s)])
 		} else {
 			timeBuf.WriteString("00")
@@ -173,6 +193,9 @@ func parseTime(s string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("invalid date format: %s", s)
 	}
 
+	if t.openDebug() {
+		fmt.Printf("time(%s)\n", timeBuf.String())
+	}
 	return time.Parse(time.RFC3339, timeBuf.String())
 }
 
@@ -283,7 +306,7 @@ func (t *Touch) Touch(name string) error {
 	mtime := now
 
 	if t.Stamp != nil && len(*t.Stamp) > 0 {
-		t, err := parseTime(*t.Stamp)
+		t, err := t.parseTime(*t.Stamp)
 		if err != nil {
 			return err
 		}
