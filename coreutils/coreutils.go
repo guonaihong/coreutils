@@ -9,6 +9,7 @@ import (
 	"github.com/guonaihong/coreutils/head"
 	"github.com/guonaihong/coreutils/paste"
 	"github.com/guonaihong/coreutils/seq"
+	"github.com/guonaihong/coreutils/shuf"
 	"github.com/guonaihong/coreutils/sleep"
 	"github.com/guonaihong/coreutils/tac"
 	"github.com/guonaihong/coreutils/tail"
@@ -56,6 +57,10 @@ func main() {
 
 	parent.SubCommand("seq", "Use the seq subcommand", func() {
 		seq.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("shuf", "Use the shuf subcommand", func() {
+		shuf.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("sleep", "Use the sleep subcommand", func() {

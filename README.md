@@ -42,8 +42,9 @@ If you want to use the cat command
 * uniq [详情](./uniq/README.md)
 * whoami [详情](./whoami/README.md)
 * yes [详情](./yes/README.md)
+* shuf [详情](./shuf/README.md)
 * seq [详情](./seq/README.md)
 * sleep [详情](./sleep/README.md)
 
 ## progress
-progress = 18 / 86 = 20%
+progress = 19 / 86 = 20%

@@ -6,7 +6,7 @@ import (
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"io"
-	"math"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -64,7 +64,28 @@ func New(argv []string) (*Shuf, []string) {
 	return shuf, args
 }
 
-func (s *Shuf) readFromFile(name string, m map[string]struct{}) error {
+type result struct {
+	m map[int]struct{}
+	a [][]byte
+}
+
+func (r *result) init() {
+	if r.m == nil {
+		r.m = map[int]struct{}{}
+		r.a = make([][]byte, 0, 10)
+	}
+}
+
+func (r *result) add(no int, padding int, a []byte) {
+	r.m[no-padding] = struct{}{}
+	r.a = append(r.a, a)
+}
+
+func (r *result) del(no int) {
+	delete(r.m, no)
+}
+
+func (s *Shuf) readFromFile(name string, r *result) error {
 
 	s.lineDelim = byte('\n')
 
@@ -81,21 +102,24 @@ func (s *Shuf) readFromFile(name string, m map[string]struct{}) error {
 
 	br := bufio.NewReader(fd)
 
-	for {
+	for no := 0; ; no++ {
 
 		l, e := br.ReadBytes(s.lineDelim)
 		if e != nil && len(l) == 0 {
 			break
 		}
 
-		m[string(l)] = struct{}{}
+		r.add(no, 0, l)
 	}
+
 	return nil
 }
 
 func (s *Shuf) Shuf(args []string, w io.Writer) error {
 
-	m := map[string]struct{}{}
+	r := &result{}
+
+	r.init()
 
 	if s.IsInputRange() {
 		rs := strings.Split(*s.InputRange, "-")
@@ -113,39 +137,73 @@ func (s *Shuf) Shuf(args []string, w io.Writer) error {
 			return fmt.Errorf(`invalid input range: "%s"`, *s.InputRange)
 		}
 
+		i := start
 		for ; start <= end; start++ {
-			m[fmt.Sprintf("%d\n", start)] = struct{}{}
+			r.add(start, i, []byte(fmt.Sprintf("%d\n", start)))
 		}
-	}
 
-	if s.IsEcho() {
+	} else if s.IsEcho() {
 
-		for _, v := range args {
-			m[v] = struct{}{}
+		for k, v := range args {
+			r.add(k, 0, append([]byte(v), '\n'))
 		}
 
 	} else {
-		s.readFromFile(args[0], m)
+		s.readFromFile(args[0], r)
 	}
 
-	n := math.MaxInt64
+	n := len(r.a)
 
 	if s.HeadCount != nil && *s.HeadCount >= 0 {
 		n = *s.HeadCount
 	}
 
-	for i := 0; i < n; i++ {
+	var rnd *rand.Rand
+	var err error
 
-		for k := range m {
-			w.Write([]byte(k))
-			if s.Repeat != nil && !*s.Repeat {
-				delete(m, k)
-			}
+	if s.IsRandSource() {
+		rnd, err = utils.GetRandSource(*s.RandomSource)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := 0; ; i++ {
+
+		if !s.IsRepeat() && i >= n {
 			break
+		}
+
+		k := 0
+
+		if rnd != nil {
+			k = int(rnd.Int63n(int64(len(r.a))))
+			w.Write([]byte(r.a[k]))
+			goto next
+		}
+
+		for k = range r.m {
+
+			w.Write([]byte(r.a[k]))
+
+			break
+		}
+
+	next:
+		if !s.IsRepeat() {
+			r.del(k)
 		}
 	}
 
 	return nil
+}
+
+func (s *Shuf) IsRepeat() bool {
+	return s.Repeat != nil && *s.Repeat
+}
+
+func (s *Shuf) IsRandSource() bool {
+	return s.RandomSource != nil && len(*s.RandomSource) > 0
 }
 
 func (s *Shuf) IsEcho() bool {
@@ -157,9 +215,11 @@ func (s *Shuf) IsInputRange() bool {
 }
 
 func (s *Shuf) CheckInputRange(rangeStr string) error {
+
 	if strings.Index(rangeStr, "-") == -1 {
 		return fmt.Errorf(`invalid input range: "%s"`, rangeStr)
 	}
+
 	return nil
 }
 
@@ -168,7 +228,11 @@ func Main(argv []string) {
 	shuf, args := New(argv)
 
 	if !*shuf.Echo && len(args) > 1 {
-		utils.Die(fmt.Sprintf("shuf: extra operand '%s'", args[1]))
+		utils.Die(fmt.Sprintf("shuf: extra operand '%s'\n", args[1]))
+	}
+
+	if len(*shuf.InputRange) > 0 && len(args) > 0 {
+		utils.Die(fmt.Sprintf("shuf: extra operand '%s'\n", args[0]))
 	}
 
 	w := os.Stdout
