@@ -33,6 +33,7 @@ If you want to use the cat command
 * echo [详情](./echo/README.md)
 * head [详情](./head/README.md)
 * paste [详情](./paste/README.md)
+* rmdir [详情](./rmdir/README.md)
 * tee [详情](./tee/README.md)
 * touch [详情](./touch/README.md)
 * tail [详情](./tail/README.md)
@@ -47,4 +48,4 @@ If you want to use the cat command
 * sleep [详情](./sleep/README.md)
 
 ## progress
-progress = 19 / 86 = 20%
+progress = 20 / 86 = 23%

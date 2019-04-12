@@ -8,6 +8,7 @@ import (
 	"github.com/guonaihong/coreutils/echo"
 	"github.com/guonaihong/coreutils/head"
 	"github.com/guonaihong/coreutils/paste"
+	"github.com/guonaihong/coreutils/rmdir"
 	"github.com/guonaihong/coreutils/seq"
 	"github.com/guonaihong/coreutils/shuf"
 	"github.com/guonaihong/coreutils/sleep"
@@ -37,6 +38,10 @@ func main() {
 
 	parent.SubCommand("paste", "Use the paste subcommand", func() {
 		paste.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("rmdir", "Use the rmdir subcommand", func() {
+		rmdir.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("basename", "Use the basename subcommand", func() {
