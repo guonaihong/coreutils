@@ -1,7 +1,7 @@
 # coreutils
 
 ## 简介
-coreutils项目是gnu coreutils的扩展
+The coreutils project is a reimplemented version of golang
 
 ## install coreutils
 ```
@@ -25,27 +25,27 @@ If you want to use the cat command
 ./echo "hello china"
 ```
 
-## 已完成命令如下 
-* basename [详情](./basename/README.md)
-* cat [详情](./cat/README.md)
-* cut [详情](./cut/README.md)
-* dirname [详情](./dirname/README.md)
-* echo [详情](./echo/README.md)
-* head [详情](./head/README.md)
-* paste [详情](./paste/README.md)
-* rmdir [详情](./rmdir/README.md)
-* tee [详情](./tee/README.md)
-* touch [详情](./touch/README.md)
-* tail [详情](./tail/README.md)
-* tac [详情](./tac/README.md)
-* tr [详情](./tr/README.md)
-* true [详情](./true/README.md)
-* uniq [详情](./uniq/README.md)
-* whoami [详情](./whoami/README.md)
-* yes [详情](./yes/README.md)
-* shuf [详情](./shuf/README.md)
-* seq [详情](./seq/README.md)
-* sleep [详情](./sleep/README.md)
+## The completed command is as follows
+* basename [detail](./basename/README.md)
+* cat [detail](./cat/README.md)
+* cut [detail](./cut/README.md)
+* dirname [detail](./dirname/README.md)
+* echo [detail](./echo/README.md)
+* head [detail](./head/README.md)
+* paste [detail](./paste/README.md)
+* rmdir [detail](./rmdir/README.md)
+* tee [detail](./tee/README.md)
+* touch [detail](./touch/README.md)
+* tail [detail](./tail/README.md)
+* tac [detail](./tac/README.md)
+* tr [detail](./tr/README.md)
+* true [detail](./true/README.md)
+* uniq [detail](./uniq/README.md)
+* whoami [detail](./whoami/README.md)
+* yes [detail](./yes/README.md)
+* shuf [detail](./shuf/README.md)
+* seq [detail](./seq/README.md)
+* sleep [detail](./sleep/README.md)
 
 ## progress
 progress = 20 / 86 = 23%
