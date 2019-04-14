@@ -1,14 +1,14 @@
 # cat
 
-#### 简介
-cat 使用gnu的命令行选项(已适配到ubuntu 16.04)，在mac电脑上可以获得和linux 一样的体验
+#### summary
+cat has the same cat command as ubuntu 18.04
 
 #### install
 ```
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/cat/cat
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of ./cat:
   -A, --show-all

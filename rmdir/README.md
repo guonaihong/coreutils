@@ -1,14 +1,14 @@
 # rmdir
 
-#### 简介
-rmdir 使用gnu的命令行选项(已适配到ubuntu 16.04)
+#### summary
+Rmidr has the same rmdir command as ubuntu 18.04
 
 #### install
 ```
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/rmdir/rmdir
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of rmdir:
   -ignore-fail-on-non-empty

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/guonaihong/coreutils/basename"
 	"github.com/guonaihong/coreutils/cat"
+	"github.com/guonaihong/coreutils/chown"
 	"github.com/guonaihong/coreutils/cut"
 	"github.com/guonaihong/coreutils/dirname"
 	"github.com/guonaihong/coreutils/echo"
@@ -30,6 +31,10 @@ func main() {
 
 	parent.SubCommand("cat", "Use the cat subcommand", func() {
 		cat.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("chown", "Use the chown subcommand", func() {
+		chown.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("cut", "Use the cut subcommand", func() {

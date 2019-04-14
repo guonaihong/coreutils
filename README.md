@@ -1,6 +1,6 @@
 # coreutils
 
-## 简介
+## summary
 The coreutils project is a reimplemented version of golang
 
 ## install coreutils

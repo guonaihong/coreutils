@@ -9,6 +9,7 @@ import (
 type Rmdir struct {
 	Parent               *bool
 	IgnoreFailOnNonEmpty *bool
+	Verbose              *bool
 }
 
 func New(argv []string) (*Rmdir, []string) {
@@ -22,10 +23,14 @@ func New(argv []string) (*Rmdir, []string) {
 			"is non-empty").
 		NewBool(false)
 
+	rmdir.Verbose = command.Opt("v, verbose",
+		"output a diagnostic for every directory processed").
+		Flags(flag.PosixShort).NewBool(false)
+
 	rmdir.Parent = command.Opt("p, parent",
 		"remove DIRECTORY and its ancestors; e.g., 'rmdir -p a/b/c' is\n"+
 			"similar to 'rmdir a/b/c a/b a'").
-		NewBool(false)
+		Flags(flag.PosixShort).NewBool(false)
 
 	command.Parse(argv[1:])
 
@@ -56,20 +61,39 @@ func (r *Rmdir) IsIgnoreFailOnNonEmpty() bool {
 		*r.IgnoreFailOnNonEmpty
 }
 
+func (r *Rmdir) IsVerbose() bool {
+	return r.Verbose != nil && *r.Verbose
+}
+
+func exitCode(failCount *int) {
+	if *failCount > 0 {
+		os.Exit(1)
+	}
+}
+
 func Main(argv []string) {
 
 	rmdir, args := New(argv)
 
+	failCount := 0
+	defer exitCode(&failCount)
+
 	for _, v := range args {
+
+		if rmdir.IsVerbose() {
+			fmt.Printf("rmdir: removing directory, '%s'\n", v)
+		}
 
 		isDir, err := rmdir.isDir(v)
 		if err != nil {
 			fmt.Printf("rmdir: %s\n", err)
+			failCount++
 			continue
 		}
 
 		if isDir == false {
 			fmt.Printf("rmdir: failed to remove '%s': Not a directory\n", v)
+			failCount++
 			continue
 		}
 
@@ -81,6 +105,7 @@ func Main(argv []string) {
 			}
 
 			fmt.Printf("rmdir: %s\n", err)
+			failCount++
 		}
 	}
 }
