@@ -1,14 +1,14 @@
 # seq
 
-#### 简介
-seq 使用gnu的命令行选项
+#### summary
+seq has the same seq command as ubuntu 18.04
 
 #### install
 ```
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/seq/seq
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of seq:
   -f, --format string

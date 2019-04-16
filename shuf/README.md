@@ -1,14 +1,14 @@
 # shuf
 
-#### 简介
-shuf 使用gnu的命令行选项(已适配到ubuntu 16.04)
+#### summary
+shuf has the same shuf command as ubuntu 18.04
 
 #### install
 ```
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/shuf/shuf
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of shuf:
   -e, --echo

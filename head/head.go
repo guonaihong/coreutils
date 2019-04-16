@@ -22,8 +22,8 @@ func New(argv []string) (*Head, []string) {
 
 	h := Head{}
 
-	nbytes := command.Opt("c, bytes", "print the first NUM bytes of each file;"+
-		" with the leading '-', print all but the last NUM bytes of each file").
+	nbytes := command.Opt("c, bytes", "print the first NUM bytes of each file;\n"+
+		" with the leading '-', print all but the last\nNUM bytes of each file").
 		Flags(flag.PosixShort).
 		NewString("0")
 
@@ -32,8 +32,8 @@ func New(argv []string) (*Head, []string) {
 			Regex: `^\d+$`,
 			Short: []string{"n"},
 			Long:  []string{"lines"},
-			Usage: "print the first NUM lines instead of the first 10;" +
-				"with the leading '-', print all but the last" +
+			Usage: "print the first NUM lines instead of the first 10;\n" +
+				"with the leading '-', print all but the last\n" +
 				"NUM lines of each file"}).
 		Flags(flag.RegexKeyIsValue | flag.PosixShort).
 		NewInt(10)

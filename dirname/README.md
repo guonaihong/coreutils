@@ -1,6 +1,6 @@
 # dirname
 
-#### 简介
+#### summary
 dirname
 
 #### install
@@ -8,7 +8,7 @@ dirname
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/dirname/dirname
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of dirname:
   -version

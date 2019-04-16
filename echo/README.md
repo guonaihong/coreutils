@@ -1,6 +1,6 @@
 # echo
 
-#### 简介
+#### summary
 echo 
 
 #### install
@@ -8,7 +8,7 @@ echo
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/echo/echo
 ```
 
-#### 命令行选项
+#### usage
 ```
 Usage of echo:
   -E    disable interpretation of backslash escapes (default) (default true)

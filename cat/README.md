@@ -10,7 +10,7 @@ env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/cat/cat
 
 #### usage
 ```console
-Usage of ./cat:
+Usage of cat:
   -A, --show-all
         equivalent to -vET
   -E, --show-end

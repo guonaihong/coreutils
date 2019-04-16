@@ -1,6 +1,6 @@
 # basename
 
-#### 简介
+#### summary
 basename 
 
 #### install
@@ -8,7 +8,7 @@ basename
 env GOPATH=`pwd` go get -u github.com/guonaihong/basename/basename
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of basename:
   -a, --multiple

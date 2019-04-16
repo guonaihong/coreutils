@@ -1,6 +1,6 @@
 # sleep
 
-#### 简介
+#### summary
 sleep
 
 #### install
@@ -8,7 +8,7 @@ sleep
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/sleep/sleep
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of sleep:
   -version

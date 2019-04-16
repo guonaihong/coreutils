@@ -1,6 +1,6 @@
 # cut
 
-#### 简介
+#### summary
 cut
 
 #### install
@@ -8,7 +8,7 @@ cut
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/cut/cut
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of cut:
   -b, --bytes string

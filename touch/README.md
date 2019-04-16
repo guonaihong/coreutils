@@ -1,14 +1,14 @@
 # touch
 
-#### 简介
-touch 使用gnu的命令行选项(已适配到ubuntu 18.04)
+#### summary
+touch has the same touch command as ubuntu 18.04
 
 #### install
 ```
 env GOPATH=`pwd` go get -u github.com/guonaihong/coreutils/touch/touch
 ```
 
-#### 命令行选项
+#### usage
 ```console
 Usage of touch:
   -a	change only the access time
