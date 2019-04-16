@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
+	"golang.org/x/sys/unix"
+	"io"
 	"os"
 	"os/user"
 	"strconv"
@@ -176,7 +178,67 @@ func formatError(fileName string, err error) error {
 	return fmt.Errorf("chown: changing ownership of '%s': %s", fileName, err)
 }
 
-func (c *Chown) Chown(name string, fileName string) error {
+func (c *Chown) IsChanges() bool {
+	return c.Changes != nil && *c.Changes
+}
+
+func (c *Chown) IsVerbose() bool {
+	return c.Verbose != nil && *c.Verbose
+}
+
+func (c *Chown) printVerbse(fileName string, gu *groupUser, w io.Writer) error {
+	var st unix.Stat_t
+
+	err := unix.Lstat(fileName, &st)
+	if err != nil {
+		//todo
+		return err
+	}
+
+	if gu.group == nil && gu.user == nil {
+		if c.IsVerbose() {
+			fmt.Fprintf(w, "ownership of '%s' retained\n", fileName)
+		}
+		return nil
+	}
+
+	fileUser, err := user.Lookup(fmt.Sprintf("%d", st.Uid))
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+		return nil
+	}
+
+	fileGroup, err := user.LookupGroupId(fmt.Sprintf("%d", st.Gid))
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+		return nil
+	}
+
+	if c.IsChanges() {
+		if gu.group.Gid == fileUser.Gid && gu.user.Uid == fileUser.Uid {
+			goto next
+		}
+		return nil
+	}
+
+	if gu.group.Gid == fileUser.Gid && gu.user.Uid == fileUser.Uid {
+
+		fmt.Fprintf(w,
+			"ownership of '%s' retained as %s:%s\n",
+			fileName, fileUser.Username, fileGroup.Name)
+		return nil
+	}
+
+next:
+	fmt.Fprintf(w,
+		"changed ownership of '%s' from %s:%s to %s:%s\n",
+		fileName, gu.user.Username, gu.group.Name,
+		fileUser.Username, fileGroup.Name)
+
+	return nil
+}
+
+func (c *Chown) Chown(name string, fileName string, w io.Writer) error {
 
 	groupUser, err := getGroupUser(name)
 	if err != nil {
@@ -190,6 +252,29 @@ func (c *Chown) Chown(name string, fileName string) error {
 
 	if groupUser.group != nil {
 		gid, _ = strconv.Atoi(groupUser.group.Gid)
+	}
+
+	if gid == -1 && uid != -1 {
+		groupUser.group, err = user.LookupGroupId(groupUser.user.Uid)
+		if err != nil {
+			return err
+		}
+		gid = uid
+	}
+
+	if uid == -1 && gid != -1 {
+		groupUser.user, err = user.Lookup(groupUser.group.Gid)
+		if err != nil {
+			return err
+		}
+		uid = gid
+	}
+
+	if c.IsChanges() || c.IsVerbose() {
+		err = c.printVerbse(fileName, groupUser, w)
+		if err != nil {
+			return formatError(fileName, err)
+		}
 	}
 
 	err = os.Chown(fileName, uid, gid)
@@ -210,7 +295,7 @@ func Main(argv []string) {
 	}
 
 	for _, a := range args[1:] {
-		err := c.Chown(args[0], a)
+		err := c.Chown(args[0], a, os.Stdout)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 		}

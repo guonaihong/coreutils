@@ -1,6 +1,9 @@
 package chown
 
 import (
+	"bytes"
+	"github.com/guonaihong/coreutils/utils"
+	"os"
 	"testing"
 )
 
@@ -18,10 +21,31 @@ func TestGetGroupUserError(t *testing.T) {
 
 func testChown(name string, fileName string, needErr string, t *testing.T) {
 	c := Chown{}
-	err := c.Chown(name, fileName)
+	err := c.Chown(name, fileName, os.Stdout)
 	if err.Error() != needErr {
 		t.Errorf("need error(%s), actual error(%s)\n", needErr, err.Error())
 	}
+}
+
+func testChownChanges(name string, out string, t *testing.T) {
+	c := Chown{}
+
+	var w bytes.Buffer
+
+	os.Chown("tst.dat", 2, 2)
+
+	c.Verbose = utils.Bool(true)
+	err := c.Chown(name, "tst.dat", &w)
+	if w.String() != out || w.String() == "" {
+		t.Errorf("need(%s), actual(%s), rv(%v)\n", out, w.String(), err)
+	}
+
+}
+
+// need root user to run
+func TestChownChanges(t *testing.T) {
+	testChownChanges(":", "ownership of 'tst.dat' retained\n", t)
+	testChownChanges("bin:", "", t)
 }
 
 func TestChown(t *testing.T) {
