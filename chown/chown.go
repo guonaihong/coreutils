@@ -112,25 +112,21 @@ func getGroupUser(name string) (*groupUser, error) {
 		names = strings.Split(name, ".")
 	}
 
-	name1 := name
-	if len(names) > 0 {
-		name1 = names[0]
-	}
+	var u *user.User
+	var err error
 
-	u, err := user.Lookup(name1)
-	if err != nil {
-		if _, ok := err.(user.UnknownUserError); ok {
-			err = fmt.Errorf("chown: invalid user: '%s'", name)
+	if len(names[0]) > 0 {
+		u, err = user.Lookup(names[0])
+		if err != nil {
+			if _, ok := err.(user.UnknownUserError); ok {
+				err = fmt.Errorf("chown: invalid user: '%s'", name)
+			}
+			return nil, err
 		}
-		return nil, err
-	}
-
-	if len(names) == 0 {
-		return &groupUser{user: u}, nil
 	}
 
 	var g *user.Group
-	if len(names[1]) > 0 {
+	if len(names) > 1 && len(names[1]) > 0 {
 		g, err = user.LookupGroup(names[1])
 		if err != nil {
 			if _, ok := err.(user.UnknownGroupError); ok {
@@ -202,7 +198,7 @@ func (c *Chown) printVerbse(fileName string, gu *groupUser, w io.Writer) error {
 		return nil
 	}
 
-	fileUser, err := user.Lookup(fmt.Sprintf("%d", st.Uid))
+	fileUser, err := user.LookupId(fmt.Sprintf("%d", st.Uid))
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
 		return nil
@@ -232,8 +228,8 @@ func (c *Chown) printVerbse(fileName string, gu *groupUser, w io.Writer) error {
 next:
 	fmt.Fprintf(w,
 		"changed ownership of '%s' from %s:%s to %s:%s\n",
-		fileName, gu.user.Username, gu.group.Name,
-		fileUser.Username, fileGroup.Name)
+		fileName, fileUser.Username, fileGroup.Name,
+		gu.user.Username, gu.group.Name)
 
 	return nil
 }
@@ -263,7 +259,8 @@ func (c *Chown) Chown(name string, fileName string, w io.Writer) error {
 	}
 
 	if uid == -1 && gid != -1 {
-		groupUser.user, err = user.Lookup(groupUser.group.Gid)
+		//groupUser.user = &user.User{}
+		groupUser.user, err = user.LookupId(groupUser.group.Gid)
 		if err != nil {
 			return err
 		}

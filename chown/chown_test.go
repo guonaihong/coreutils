@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/guonaihong/coreutils/utils"
 	"os"
+	"os/user"
 	"testing"
 )
 
@@ -19,23 +20,43 @@ func TestGetGroupUserError(t *testing.T) {
 	testGetGroupUserError("root:wwwwwww", "chown: invalid group: 'root:wwwwwww'", t)
 }
 
-func testChown(name string, fileName string, needErr string, t *testing.T) {
+func testChown(name string, fileName string, needErr string, rootRun bool, t *testing.T) {
+	u, err := user.Current()
+	if err != nil {
+		return
+	}
+
+	if u.Username == "root" && !rootRun {
+		return
+	}
+
 	c := Chown{}
-	err := c.Chown(name, fileName, os.Stdout)
+	err = c.Chown(name, fileName, os.Stdout)
 	if err.Error() != needErr {
 		t.Errorf("need error(%s), actual error(%s)\n", needErr, err.Error())
 	}
 }
 
-func testChownChanges(name string, out string, t *testing.T) {
+func testChownVerbose(name string, out string, t *testing.T) {
+	u, err := user.Current()
+	if err != nil {
+		t.Errorf("%s\n", err)
+		return
+	}
+
+	if u.Username != "root" {
+		t.Errorf("need root user\n")
+		return
+	}
+
 	c := Chown{}
 
 	var w bytes.Buffer
 
-	os.Chown("tst.dat", 2, 2)
+	os.Chown("test.dat", 2, 2)
 
 	c.Verbose = utils.Bool(true)
-	err := c.Chown(name, "tst.dat", &w)
+	err = c.Chown(name, "test.dat", &w)
 	if w.String() != out || w.String() == "" {
 		t.Errorf("need(%s), actual(%s), rv(%v)\n", out, w.String(), err)
 	}
@@ -43,12 +64,16 @@ func testChownChanges(name string, out string, t *testing.T) {
 }
 
 // need root user to run
-func TestChownChanges(t *testing.T) {
-	testChownChanges(":", "ownership of 'tst.dat' retained\n", t)
-	testChownChanges("bin:", "", t)
+func TestChownVerbose(t *testing.T) {
+	testChownVerbose(":", "ownership of 'test.dat' retained\n", t)
+	testChownVerbose("bin:", "ownership of 'test.dat' retained as bin:bin\n", t)
+	testChownVerbose(":bin", "ownership of 'test.dat' retained as bin:bin\n", t)
+	testChownVerbose("root:", "changed ownership of 'test.dat' from bin:bin to root:root\n", t)
+	testChownVerbose(":root", "changed ownership of 'test.dat' from bin:bin to :root\n", t)
+	testChownVerbose("root", "changed ownership of 'test.dat' from bin to root\n", t)
 }
 
 func TestChown(t *testing.T) {
-	testChown("root", "chown_test.go", "chown: changing ownership of 'chown_test.go': Operation not permitted", t)
-	testChown(":", "yy", "chown: cannot access 'yy': No such file or directory", t)
+	testChown("root", "chown_test.go", "chown: changing ownership of 'chown_test.go': Operation not permitted", false, t)
+	testChown(":", "yy", "chown: cannot access 'yy': No such file or directory", true, t)
 }
