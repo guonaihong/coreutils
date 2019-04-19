@@ -341,6 +341,20 @@ func (c *Chown) Chown(name string, fileName string, u *User) error {
 		return formatError(fileName, err)
 	}
 
+	if c.Recursive != nil && *c.Recursive {
+		stat := os.Stat
+		if c.L != nil {
+			stat = os.Lstat
+		}
+		walk := utils.NewWalk(stat)
+		walk.Walk(name, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
 	return nil
 }
 
