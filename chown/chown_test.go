@@ -16,7 +16,7 @@ const (
 )
 
 func testGetGroupUserError(name string, needErr string, t *testing.T) {
-	_, err := getGroupUser(name)
+	_, err := getUserGroupFromName(name)
 	if err.Error() != needErr {
 		t.Errorf("need error(%s), actual error(%s)\n", needErr, err.Error())
 	}

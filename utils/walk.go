@@ -33,14 +33,15 @@ type WalkFunc func(path string, info os.FileInfo, err error) error
 
 type Walk struct {
 	stat func(name string) (os.FileInfo, error)
+	onlyOne bool
 }
 
-func NewWalk(stat func(name string) (os.FileInfo, error)) *Walk {
+func NewWalk(onlyOne bool, stat func(name string) (os.FileInfo, error)) *Walk {
 	if stat == nil {
 		stat = os.Lstat
 	}
 
-	return &Walk{stat: stat}
+	return &Walk{stat: stat, onlyOne: onlyOne}
 }
 
 // walk recursively descends path, calling walkFn.
@@ -92,6 +93,9 @@ func (w *Walk) Walk(root string, walkFn WalkFunc) error {
 	if err != nil {
 		err = walkFn(root, nil, err)
 	} else {
+		if w.onlyOne {
+			w.stat = os.Lstat
+		}
 		err = w.walk(root, info, walkFn)
 	}
 	if err == SkipDir {

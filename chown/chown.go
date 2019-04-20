@@ -14,12 +14,12 @@ import (
 )
 
 type Chown struct {
-	Changes *bool
-	//-f, --silent, --quiet
+	Changes        *bool
+	Quiet          *bool
 	Verbose        *bool
 	Dereference    *bool
 	NoDereference  *bool
-	Form           *string
+	From           *string
 	NoPreserveRoot *bool
 	PreserveRoot   *bool
 	Reference      *string
@@ -50,6 +50,11 @@ func New(argv []string) (*Chown, []string) {
 		"like verbose but report only when a change is made").
 		Flags(flag.PosixShort).NewBool(false)
 
+	//-f, --silent, --quiet
+	c.Quiet = command.Opt("f, silent, quiet",
+		"suppress most error messages").
+		Flags(flag.PosixShort).NewBool(false)
+
 	c.Verbose = command.Opt("v, verbose",
 		"output a diagnostic for every file processed").
 		Flags(flag.PosixShort).NewBool(false)
@@ -65,7 +70,7 @@ func New(argv []string) (*Chown, []string) {
 			"ownership of a symlink)").
 		Flags(flag.PosixShort).NewBool(false)
 
-	c.Form = command.Opt("from",
+	c.From = command.Opt("from",
 		"change the owner and/or group of each file only if\n"+
 			"its current owner and/or group match those specified\n"+
 			"here.  Either may be omitted, in which case a match\n"+
@@ -122,18 +127,18 @@ func (g *chownGroup) String() string {
 	return g.Name
 }
 
-type groupUser struct {
+type userGroup struct {
 	group *chownGroup
 	user  *chownUser
 	name  string
 }
 
-func getGroupUser(name string) (*groupUser, error) {
+func getUserGroupFromName(name string) (*userGroup, error) {
 
 	var names []string
 
 	if name == ":" || name == "." {
-		return &groupUser{name: name}, nil
+		return &userGroup{name: name}, nil
 	}
 
 	names = strings.Split(name, ":")
@@ -166,7 +171,7 @@ func getGroupUser(name string) (*groupUser, error) {
 		}
 	}
 
-	return &groupUser{user: (*chownUser)(u), group: (*chownGroup)(g), name: name}, nil
+	return &userGroup{user: (*chownUser)(u), group: (*chownGroup)(g), name: name}, nil
 }
 
 func checkArgs(args []string) error {
@@ -182,6 +187,7 @@ func checkArgs(args []string) error {
 }
 
 func formatError(fileName string, err error) error {
+	needError := true
 	switch e := err.(type) {
 	case *os.PathError:
 		err = e.Err
@@ -199,9 +205,23 @@ func formatError(fileName string, err error) error {
 		err = e.Err
 	case *os.SyscallError:
 		err = e.Err
+	default:
+		needError = false
 	}
 
-	return fmt.Errorf("chown: changing ownership of '%s': %s", fileName, err)
+	if needError {
+		return fmt.Errorf("chown: changing ownership of '%s': %s", fileName, err)
+	}
+
+	return err
+}
+
+func (c *Chown) IsNoDereference() bool {
+	return c.NoDereference != nil && *c.NoDereference
+}
+
+func (c *Chown) IsFrom() bool {
+	return c.From != nil && len(*c.From) > 0
 }
 
 func (c *Chown) IsChanges() bool {
@@ -212,7 +232,15 @@ func (c *Chown) IsVerbose() bool {
 	return c.Verbose != nil && *c.Verbose
 }
 
-func noChanages(gu *groupUser, fileUser *user.User, fileGroup *user.Group) bool {
+func (c *Chown) IsPreserveRoot() bool {
+	return c.PreserveRoot != nil && *c.PreserveRoot
+}
+
+func (c *Chown) IsReference() bool {
+	return c.Reference != nil && len(*c.Reference) > 0
+}
+
+func noChanages(gu *userGroup, fileUser *user.User, fileGroup *user.Group) bool {
 	return (gu.group == nil || gu.group.Gid == fileUser.Gid) &&
 		(gu.user == nil || gu.user.Uid == fileUser.Uid)
 }
@@ -221,41 +249,40 @@ func findGroup(name string) bool {
 	return !(strings.Index(name, ":") == -1 && strings.Index(name, ".") == -1)
 }
 
-func genToName(gu *groupUser) (to string) {
+func genToName(gu *userGroup) (to string) {
 	to = fmt.Sprintf("%s:%s", gu.user, gu.group)
 	if !findGroup(gu.name) || len(gu.name) > 0 && gu.name[0] == ':' {
 		to = gu.name
-		fmt.Printf("to = %s\n", to)
 	}
 	return
 }
 
-func (c *Chown) printVerbse(fileName string, gu *groupUser, w io.Writer) error {
-	var st unix.Stat_t
-
-	err := unix.Lstat(fileName, &st)
-	if err != nil {
-		//todo
-		return err
-	}
+func (c *Chown) printVerbse(
+	fileName string,
+	canChanges bool,
+	st *unix.Stat_t,
+	gu *userGroup) (err error) {
 
 	if gu.group == nil && gu.user == nil {
 		if c.IsVerbose() {
-			fmt.Fprintf(w, "ownership of '%s' retained\n", fileName)
+			err = fmt.Errorf("ownership of '%s' retained\n", fileName)
 		}
-		return nil
+		return err
 	}
 
 	fileUser, err := user.LookupId(fmt.Sprintf("%d", st.Uid))
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
-		return nil
+		return err
 	}
 
 	fileGroup, err := user.LookupGroupId(fmt.Sprintf("%d", st.Gid))
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
-		return nil
+		return err
+	}
+
+	if !canChanges {
+		return fmt.Errorf("ownership of '%s' retained as %s\n",
+			fileName, genToName(gu))
 	}
 
 	if c.IsChanges() {
@@ -267,10 +294,8 @@ func (c *Chown) printVerbse(fileName string, gu *groupUser, w io.Writer) error {
 
 	if noChanages(gu, fileUser, fileGroup) {
 
-		fmt.Fprintf(w,
-			"ownership of '%s' retained as %s\n",
+		return fmt.Errorf("ownership of '%s' retained as %s\n",
 			fileName, genToName(gu))
-		return nil
 	}
 
 next:
@@ -280,12 +305,9 @@ next:
 		from = fileUser.Username
 	}
 
-	fmt.Fprintf(w,
-		"changed ownership of '%s' from %s to %s\n",
+	return fmt.Errorf("changed ownership of '%s' from %s to %s\n",
 		fileName, from,
 		genToName(gu))
-
-	return nil
 }
 
 // user: or user.
@@ -294,45 +316,133 @@ func isEndSplitter(name string) bool {
 	return len(name) > 0 && (name[last] == ':' || name[last] == '.')
 }
 
-func (c *Chown) Chown(name string, fileName string, u *User) error {
+func parseUidGid(userGroup *userGroup) (uid, gid int) {
+	uid, gid = -1, -1
+	if userGroup.user != nil {
+		uid, _ = strconv.Atoi(userGroup.user.Uid)
+	}
 
-	w := u.W
-	groupUser, err := getGroupUser(name)
+	if userGroup.group != nil {
+		gid, _ = strconv.Atoi(userGroup.group.Gid)
+	}
+
+	return
+}
+
+func (c *Chown) getUidGidFromName() (uid, gid int, err error) {
+
+	uid, gid = -1, -1
+
+	userGroup, err := getUserGroupFromName(*c.From)
+	if err != nil {
+		return
+	}
+
+	uid, gid = parseUidGid(userGroup)
+	return
+}
+
+func (c *Chown) genUidGidFromFile(fileName string) (uidGid string, err error) {
+	var st unix.Stat_t
+
+	stat := unix.Stat
+	if c.IsNoDereference() {
+		stat = unix.Lstat
+	}
+
+	err = stat(fileName, &st)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%d:%d", st.Uid, st.Gid), nil
+}
+
+func writeErrorToUser(u *User, err error) {
+	if u != nil && u.W != nil {
+		d := []byte{}
+		if err != nil {
+			d = []byte(err.Error())
+		}
+		u.W.Write(d)
+	}
+}
+
+func (c *Chown) Chown(name string, fileName string, u *User) (err error) {
+
+	//w := u.W
+	defer func() {
+		writeErrorToUser(u, err)
+	}()
+
+	if c.IsPreserveRoot() && fileName == "/" {
+		return fmt.Errorf("chown: it is dangerous to operate recursively on '/'\n" +
+			"chown: use --no-preserve-root to override this failsafe\n")
+	}
+
+	userGroup, err := getUserGroupFromName(name)
 	if err != nil {
 		return err
 	}
 
-	uid, gid := -1, -1
-	if groupUser.user != nil {
-		uid, _ = strconv.Atoi(groupUser.user.Uid)
-	}
-
-	if groupUser.group != nil {
-		gid, _ = strconv.Atoi(groupUser.group.Gid)
-	}
+	uid, gid := parseUidGid(userGroup)
 
 	if gid == -1 && uid != -1 && isEndSplitter(name) {
-		g, err := user.LookupGroupId(groupUser.user.Uid)
+		g, err := user.LookupGroupId(userGroup.user.Uid)
 		if err != nil {
 			return err
 		}
-		groupUser.group = (*chownGroup)(g)
+
+		userGroup.group = (*chownGroup)(g)
 		gid = uid
 	}
 
+	// Convenient to write test procedures
+	u.Uid, u.Gid = uid, gid
+
+	var st unix.Stat_t
+
+	stat := unix.Stat
+	if c.IsNoDereference() {
+		stat = unix.Lstat
+	}
+
+	if c.IsFrom() || c.IsChanges() || c.IsVerbose() {
+		err := stat(fileName, &st)
+		if err != nil {
+			// todo format error
+			return err
+		}
+
+	}
+
+	canChanges := true
+	if c.IsFrom() {
+		uid2, gid2, err := c.getUidGidFromName()
+		if err != nil {
+			//todo format error
+			return err
+		}
+
+		if !(uid2 != -1 && uint32(uid2) == st.Uid || gid2 != -1 && uint32(gid2) == st.Gid) {
+			canChanges = false
+		}
+	}
+
 	if c.IsChanges() || c.IsVerbose() {
-		err = c.printVerbse(fileName, groupUser, w)
+		err = c.printVerbse(fileName, canChanges, &st, userGroup)
 		if err != nil {
 			return formatError(fileName, err)
 		}
 	}
 
-	u.Uid = uid
-	u.Gid = gid
+	if !canChanges {
+		return nil
+	}
 
 	chown := os.Chown
 
-	if c.NoDereference != nil && *c.NoDereference {
+	if c.IsNoDereference() {
 		chown = os.Lchown
 	}
 
@@ -342,16 +452,17 @@ func (c *Chown) Chown(name string, fileName string, u *User) error {
 	}
 
 	if c.Recursive != nil && *c.Recursive {
-		stat := os.Stat
-		if c.L != nil {
-			stat = os.Lstat
+		stat := os.Lstat
+		if c.L != nil && *c.L {
+			stat = os.Stat
 		}
-		walk := utils.NewWalk(stat)
+
+		walk := utils.NewWalk(c.H != nil && *c.H, stat)
 		walk.Walk(name, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			return nil
+			return chown(fileName, uid, gid)
 		})
 	}
 
@@ -367,12 +478,31 @@ func Main(argv []string) {
 		utils.Die("%s\n", err)
 	}
 
+	errCode := 0
+	defer func(errCode *int) {
+		os.Exit(*errCode)
+	}(&errCode)
+
 	u := User{}
 	u.Init(os.Stdout)
+
+	if c.IsReference() {
+		uidGid, err := c.genUidGidFromFile(*c.Reference)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			errCode = 1
+		}
+
+		args = append([]string{uidGid}, args...)
+	}
+
 	for _, a := range args[1:] {
 		err := c.Chown(args[0], a, &u)
 		if err != nil {
-			fmt.Printf("%s\n", err)
+			if !*c.Quiet {
+				fmt.Printf("%s\n", err)
+			}
+			errCode = 1
 		}
 	}
 }
