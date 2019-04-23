@@ -43,13 +43,13 @@ func New(argv []string) (*Chgrp, []string) {
 
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
 
-	c.Changes = command.Opt("c, changes",
-		"like verbose but report only when a change is made").
-		Flags(flag.PosixShort).NewBool(false)
-
 	//-f, --silent, --quiet
 	c.Quiet = command.Opt("f, silent, quiet",
 		"suppress most error messages").
+		Flags(flag.PosixShort).NewBool(false)
+
+	c.Changes = command.Opt("c, changes",
+		"like verbose but report only when a change is made").
 		Flags(flag.PosixShort).NewBool(false)
 
 	c.Verbose = command.Opt("v, verbose",
@@ -291,7 +291,7 @@ func (c *Chgrp) genGidFromFile(fileName string) (gid string, err error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%d", st.Uid, st.Gid), nil
+	return fmt.Sprintf("%d", st.Gid), nil
 }
 
 func writeErrorToUser(u *User, err error) {
