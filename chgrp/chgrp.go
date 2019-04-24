@@ -105,17 +105,9 @@ func New(argv []string) (*Chgrp, []string) {
 	return c, command.Args()
 }
 
-type chgrpGroup user.Group
-
-func (g *chgrpGroup) String() string {
-	if g == nil {
-		return ""
-	}
-	return g.Name
-}
 
 type group struct {
-	group *chgrpGroup
+	group *user.Group
 	name  string
 }
 
@@ -171,7 +163,7 @@ func formatError(fileName string, err error) error {
 	}
 
 	if needError {
-		return fmt.Errorf("chgrp: changing ownership of '%s': %s", fileName, err)
+		return fmt.Errorf("chgrp: changing group of '%s': %s", fileName, err)
 	}
 
 	return err
@@ -216,13 +208,6 @@ func (c *Chgrp) printVerbse(
 	st *unix.Stat_t,
 	gu *group) (err error) {
 
-	if gu == nil || gu.group == nil {
-		if c.IsVerbose() {
-			err = fmt.Errorf("ownership of '%s' retained\n", fileName)
-		}
-		return err
-	}
-
 	fileGroup, err := user.LookupGroupId(fmt.Sprintf("%d", st.Gid))
 	if err != nil {
 		return err
@@ -242,7 +227,7 @@ func (c *Chgrp) printVerbse(
 
 	if noChanages(gu, fileGroup) {
 
-		return fmt.Errorf("ownership of '%s' retained as %s\n",
+		return fmt.Errorf("group of '%s' retained as %s\n",
 			fileName, genToName(gu))
 	}
 
@@ -250,7 +235,7 @@ next:
 
 	from := fmt.Sprintf("%s", fileGroup.Name)
 
-	return fmt.Errorf("changed ownership of '%s' from %s to %s\n",
+	return fmt.Errorf("changed group of '%s' from %s to %s\n",
 		fileName, from,
 		genToName(gu))
 }
@@ -356,7 +341,7 @@ func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 	}
 
 	if c.IsChanges() || c.IsVerbose() {
-		err = c.printVerbse(fileName, canChanges, &st, &group{group: (*chgrpGroup)(g)})
+		err = c.printVerbse(fileName, canChanges, &st, &group{group: g})
 		if err != nil {
 			return formatError(fileName, err)
 		}

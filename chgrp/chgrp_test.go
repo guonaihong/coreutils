@@ -78,9 +78,9 @@ func testChgrpVerbose(name string, out string, gid int, t *testing.T) {
 
 // need root user to run
 func TestChgrpVerbose(t *testing.T) {
-	testChgrpVerbose("bin", "group of 'test.dat' retained as bin\n", -1, t)
+	testChgrpVerbose("bin", "group of 'test.dat' retained as bin\n", 2, t)
 
-	testChgrpVerbose("root", "changed ownership of 'test.dat' from bin to root\n", -1, t)
+	testChgrpVerbose("root", "changed group of 'test.dat' from bin to root\n", -1, t)
 }
 
 func testChgrpChanges(name string, out string, gid int, t *testing.T) {
@@ -119,9 +119,9 @@ func testChgrpChanges(name string, out string, gid int, t *testing.T) {
 func TestChgrpChanges(t *testing.T) {
 	testChgrpChanges("bin", "", -1, t)
 
-	testChgrpChanges("root", "changed ownership of 'test.dat' from bin to root\n", -1, t)
+	testChgrpChanges("root", "changed group of 'test.dat' from bin to root\n", -1, t)
 }
 
 func TestChgrp(t *testing.T) {
-	testChgrp("root", "chgrp_test.go", "chgrp: changing ownership of 'chgrp_test.go': Operation not permitted", false, t)
+	testChgrp("root", "chgrp_test.go", "chgrp: changing group of 'chgrp_test.go': Operation not permitted", false, t)
 }
