@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/guonaihong/coreutils/basename"
 	"github.com/guonaihong/coreutils/cat"
+	"github.com/guonaihong/coreutils/chgrp"
 	"github.com/guonaihong/coreutils/chown"
 	"github.com/guonaihong/coreutils/cut"
 	"github.com/guonaihong/coreutils/dirname"
@@ -35,6 +36,10 @@ func main() {
 
 	parent.SubCommand("chown", "Use the chown subcommand", func() {
 		chown.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("chgrp", "Use the chgrp subcommand", func() {
+		chgrp.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("cut", "Use the cut subcommand", func() {

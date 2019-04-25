@@ -18,7 +18,6 @@ type Chgrp struct {
 	Verbose        *bool
 	Dereference    *bool
 	NoDereference  *bool
-	From           *string
 	NoPreserveRoot *bool
 	PreserveRoot   *bool
 	Reference      *string
@@ -36,6 +35,20 @@ type User struct {
 func (u *User) Init(w io.Writer) {
 	u.Gid = -1
 	u.W = w
+}
+
+func (u *User) writeToUser(err error) {
+	if u == nil {
+		return
+	}
+
+	if u.W != nil {
+		d := []byte{}
+		if err != nil {
+			d = []byte(err.Error())
+		}
+		u.W.Write(d)
+	}
 }
 
 func New(argv []string) (*Chgrp, []string) {
@@ -67,13 +80,6 @@ func New(argv []string) (*Chgrp, []string) {
 			"ownership of a symlink)").
 		Flags(flag.PosixShort).NewBool(false)
 
-	c.From = command.Opt("from",
-		"change the owner and/or group of each file only if\n"+
-			"its current owner and/or group match those specified\n"+
-			"here.  Either may be omitted, in which case a match\n"+
-			"is not required for the omitted attribute").
-		Flags(flag.PosixShort).NewString("")
-
 	c.NoPreserveRoot = command.Opt("no-preserve-root",
 		"do not treat '/' specially (the default)").
 		Flags(flag.PosixShort).NewBool(false)
@@ -104,7 +110,6 @@ func New(argv []string) (*Chgrp, []string) {
 
 	return c, command.Args()
 }
-
 
 type group struct {
 	group *user.Group
@@ -173,10 +178,6 @@ func (c *Chgrp) IsNoDereference() bool {
 	return c.NoDereference != nil && *c.NoDereference
 }
 
-func (c *Chgrp) IsFrom() bool {
-	return c.From != nil && len(*c.From) > 0
-}
-
 func (c *Chgrp) IsChanges() bool {
 	return c.Changes != nil && *c.Changes
 }
@@ -204,25 +205,20 @@ func genToName(gu *group) string {
 
 func (c *Chgrp) printVerbse(
 	fileName string,
-	canChanges bool,
 	st *unix.Stat_t,
-	gu *group) (err error) {
+	gu *group,
+	u *User) (err error) {
 
 	fileGroup, err := user.LookupGroupId(fmt.Sprintf("%d", st.Gid))
 	if err != nil {
 		return err
 	}
 
-	if !canChanges {
-		return fmt.Errorf("ownership of '%s' retained as %s\n",
-			fileName, genToName(gu))
-	}
-
 	if c.IsChanges() {
 		if !noChanages(gu, fileGroup) {
 			goto next
 		}
-		return nil
+		return io.EOF
 	}
 
 	if noChanages(gu, fileGroup) {
@@ -235,9 +231,10 @@ next:
 
 	from := fmt.Sprintf("%s", fileGroup.Name)
 
-	return fmt.Errorf("changed group of '%s' from %s to %s\n",
+	u.writeToUser(fmt.Errorf("changed group of '%s' from %s to %s\n",
 		fileName, from,
-		genToName(gu))
+		genToName(gu)))
+	return
 }
 
 func parseGid(g *user.Group) (gid int) {
@@ -247,19 +244,6 @@ func parseGid(g *user.Group) (gid int) {
 		gid, _ = strconv.Atoi(g.Gid)
 	}
 
-	return
-}
-
-func (c *Chgrp) getGidFromName() (gid int, err error) {
-
-	gid = -1
-
-	g, err := getGroupFromName(*c.From)
-	if err != nil {
-		return
-	}
-
-	gid = parseGid(g)
 	return
 }
 
@@ -279,21 +263,14 @@ func (c *Chgrp) genGidFromFile(fileName string) (gid string, err error) {
 	return fmt.Sprintf("%d", st.Gid), nil
 }
 
-func writeErrorToUser(u *User, err error) {
-	if u != nil && u.W != nil {
-		d := []byte{}
-		if err != nil {
-			d = []byte(err.Error())
-		}
-		u.W.Write(d)
-	}
-}
-
 func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 
-	//w := u.W
 	defer func() {
-		writeErrorToUser(u, err)
+		if c.Quiet != nil && *c.Quiet {
+			return
+		}
+		//The default err is output to stdout, or io.Writer (for testing convenience)
+		u.writeToUser(err)
 	}()
 
 	if c.IsPreserveRoot() && fileName == "/" {
@@ -309,7 +286,6 @@ func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 	gid := parseGid(g)
 
 	// Convenient to write test procedures
-	u.Gid = gid
 
 	var st unix.Stat_t
 
@@ -318,7 +294,7 @@ func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 		stat = unix.Lstat
 	}
 
-	if c.IsFrom() || c.IsChanges() || c.IsVerbose() {
+	if c.IsChanges() || c.IsVerbose() {
 		err := stat(fileName, &st)
 		if err != nil {
 			// todo format error
@@ -327,28 +303,14 @@ func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 
 	}
 
-	canChanges := true
-	if c.IsFrom() {
-		gid2, err := c.getGidFromName()
-		if err != nil {
-			//todo format error
-			return err
-		}
-
-		if !(gid2 != -1 && uint32(gid2) == st.Gid) {
-			canChanges = false
-		}
-	}
-
 	if c.IsChanges() || c.IsVerbose() {
-		err = c.printVerbse(fileName, canChanges, &st, &group{group: g})
+		err = c.printVerbse(fileName, &st, &group{group: g}, u)
 		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
 			return formatError(fileName, err)
 		}
-	}
-
-	if !canChanges {
-		return nil
 	}
 
 	chown := os.Chown
@@ -356,6 +318,9 @@ func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 	if c.IsNoDereference() {
 		chown = os.Lchown
 	}
+
+	// Don't move his position
+	u.Gid = gid
 
 	err = chown(fileName, -1, gid)
 	if err != nil {
@@ -369,11 +334,11 @@ func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 		}
 
 		walk := utils.NewWalk(c.H != nil && *c.H, stat)
-		walk.Walk(name, func(path string, info os.FileInfo, err error) error {
+		walk.Walk(fileName, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			return chown(fileName, -1, gid)
+			return chown(path, -1, gid)
 		})
 	}
 
@@ -395,7 +360,7 @@ func Main(argv []string) {
 	}(&errCode)
 
 	u := User{}
-	u.Init(os.Stdout)
+	u.Init(nil)
 
 	if c.IsReference() {
 		gid, err := c.genGidFromFile(*c.Reference)
@@ -410,9 +375,6 @@ func Main(argv []string) {
 	for _, a := range args[1:] {
 		err := c.Chgrp(args[0], a, &u)
 		if err != nil {
-			if !*c.Quiet {
-				fmt.Printf("%s\n", err)
-			}
 			errCode = 1
 		}
 	}

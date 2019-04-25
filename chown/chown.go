@@ -41,6 +41,29 @@ func (u *User) Init(w io.Writer) {
 	u.W = w
 }
 
+func (u *User) writeMsg(msg string) {
+	if u == nil {
+		return
+	}
+	if u.W != nil {
+		u.W.Write([]byte(msg))
+	}
+}
+
+func (u *User) writeError(err error) {
+	if u == nil {
+		return
+	}
+
+	if u.W != nil {
+		d := []byte{}
+		if err != nil {
+			d = []byte(err.Error())
+		}
+		u.W.Write(d)
+	}
+}
+
 func New(argv []string) (*Chown, []string) {
 	c := &Chown{}
 
@@ -261,27 +284,28 @@ func (c *Chown) printVerbse(
 	fileName string,
 	canChanges bool,
 	st *unix.Stat_t,
-	gu *userGroup) (err error) {
+	gu *userGroup,
+	u *User) (err error, msg string) {
 
 	if gu.group == nil && gu.user == nil {
 		if c.IsVerbose() {
-			err = fmt.Errorf("ownership of '%s' retained\n", fileName)
+			msg = fmt.Sprintf("ownership of '%s' retained\n", fileName)
 		}
-		return err
+		return
 	}
 
 	fileUser, err := user.LookupId(fmt.Sprintf("%d", st.Uid))
 	if err != nil {
-		return err
+		return err, ""
 	}
 
 	fileGroup, err := user.LookupGroupId(fmt.Sprintf("%d", st.Gid))
 	if err != nil {
-		return err
+		return err, ""
 	}
 
 	if !canChanges {
-		return fmt.Errorf("ownership of '%s' retained as %s\n",
+		return nil, fmt.Sprintf("ownership of '%s' retained as %s\n",
 			fileName, genToName(gu))
 	}
 
@@ -289,12 +313,12 @@ func (c *Chown) printVerbse(
 		if !noChanages(gu, fileUser, fileGroup) {
 			goto next
 		}
-		return nil
+		return nil, ""
 	}
 
 	if noChanages(gu, fileUser, fileGroup) {
 
-		return fmt.Errorf("ownership of '%s' retained as %s\n",
+		return nil, fmt.Sprintf("ownership of '%s' retained as %s\n",
 			fileName, genToName(gu))
 	}
 
@@ -305,9 +329,11 @@ next:
 		from = fileUser.Username
 	}
 
-	return fmt.Errorf("changed ownership of '%s' from %s to %s\n",
+	u.writeMsg(fmt.Sprintf("changed ownership of '%s' from %s to %s\n",
 		fileName, from,
-		genToName(gu))
+		genToName(gu)))
+
+	return
 }
 
 // user: or user.
@@ -358,21 +384,14 @@ func (c *Chown) genUidGidFromFile(fileName string) (uidGid string, err error) {
 	return fmt.Sprintf("%d:%d", st.Uid, st.Gid), nil
 }
 
-func writeErrorToUser(u *User, err error) {
-	if u != nil && u.W != nil {
-		d := []byte{}
-		if err != nil {
-			d = []byte(err.Error())
-		}
-		u.W.Write(d)
-	}
-}
-
 func (c *Chown) Chown(name string, fileName string, u *User) (err error) {
 
-	//w := u.W
 	defer func() {
-		writeErrorToUser(u, err)
+		if c.Quiet != nil && *c.Quiet {
+			return
+		}
+		//The default err is output to stdout, or io.Writer (for testing convenience)
+		u.writeError(err)
 	}()
 
 	if c.IsPreserveRoot() && fileName == "/" {
@@ -430,9 +449,12 @@ func (c *Chown) Chown(name string, fileName string, u *User) (err error) {
 	}
 
 	if c.IsChanges() || c.IsVerbose() {
-		err = c.printVerbse(fileName, canChanges, &st, userGroup)
+		err, msg := c.printVerbse(fileName, canChanges, &st, userGroup, u)
 		if err != nil {
 			return formatError(fileName, err)
+		}
+		if len(msg) > 0 {
+			u.writeMsg(msg)
 		}
 	}
 
@@ -458,11 +480,11 @@ func (c *Chown) Chown(name string, fileName string, u *User) (err error) {
 		}
 
 		walk := utils.NewWalk(c.H != nil && *c.H, stat)
-		walk.Walk(name, func(path string, info os.FileInfo, err error) error {
+		walk.Walk(fileName, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			return chown(fileName, uid, gid)
+			return chown(path, uid, gid)
 		})
 	}
 
@@ -499,9 +521,6 @@ func Main(argv []string) {
 	for _, a := range args[1:] {
 		err := c.Chown(args[0], a, &u)
 		if err != nil {
-			if !*c.Quiet {
-				fmt.Printf("%s\n", err)
-			}
 			errCode = 1
 		}
 	}

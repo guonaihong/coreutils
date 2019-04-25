@@ -15,6 +15,9 @@ const (
 	rootGid = 0
 )
 
+// test cmd
+//./coreutils chown -v -R guo:guo  ./nsq
+
 func testGetGroupUserError(name string, needErr string, t *testing.T) {
 	_, err := getUserGroupFromName(name)
 	if err.Error() != needErr {
