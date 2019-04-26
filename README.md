@@ -28,6 +28,8 @@ If you want to use the cat command
 ## The completed command is as follows
 * basename [detail](./basename/README.md)
 * cat [detail](./cat/README.md)
+* chgrp [detail](./chgrp/README.md)
+* chown [detail](./chown/README.md)
 * cut [detail](./cut/README.md)
 * dirname [detail](./dirname/README.md)
 * echo [detail](./echo/README.md)
@@ -48,4 +50,4 @@ If you want to use the cat command
 * sleep [detail](./sleep/README.md)
 
 ## progress
-progress = 20 / 86 = 23%
+progress = 22 / 86 = 25%

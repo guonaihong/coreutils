@@ -78,7 +78,7 @@ func testChgrpVerbose(name string, out string, gid int, t *testing.T) {
 
 // need root user to run
 func TestChgrpVerbose(t *testing.T) {
-	testChgrpVerbose("bin", "group of 'test.dat' retained as bin\n", -1, t)
+	testChgrpVerbose("bin", "group of 'test.dat' retained as bin\n", 2, t)
 
 	testChgrpVerbose("root", "changed group of 'test.dat' from bin to root\n", 0, t)
 }
@@ -117,7 +117,7 @@ func testChgrpChanges(name string, out string, gid int, t *testing.T) {
 }
 
 func TestChgrpChanges(t *testing.T) {
-	testChgrpChanges("bin", "", -1, t)
+	testChgrpChanges("bin", "", 2, t)
 
 	testChgrpChanges("root", "changed group of 'test.dat' from bin to root\n", 0, t)
 }

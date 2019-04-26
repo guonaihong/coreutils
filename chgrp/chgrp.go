@@ -223,8 +223,9 @@ func (c *Chgrp) printVerbse(
 
 	if noChanages(gu, fileGroup) {
 
-		return fmt.Errorf("group of '%s' retained as %s\n",
-			fileName, genToName(gu))
+		u.writeToUser(fmt.Errorf("group of '%s' retained as %s\n",
+			fileName, genToName(gu)))
+		return nil
 	}
 
 next:
@@ -263,6 +264,36 @@ func (c *Chgrp) genGidFromFile(fileName string) (gid string, err error) {
 	return fmt.Sprintf("%d", st.Gid), nil
 }
 
+func (c *Chgrp) changeAndVerbse(fileName string, g *user.Group, u *User) (err error) {
+	var st unix.Stat_t
+
+	stat := unix.Stat
+	if c.IsNoDereference() {
+		stat = unix.Lstat
+	}
+
+	if c.IsChanges() || c.IsVerbose() {
+		err = stat(fileName, &st)
+		if err != nil {
+			// todo format error
+			return err
+		}
+
+	}
+
+	if c.IsChanges() || c.IsVerbose() {
+		err = c.printVerbse(fileName, &st, &group{group: g}, u)
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return formatError(fileName, err)
+		}
+	}
+
+	return nil
+}
+
 func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 
 	defer func() {
@@ -287,30 +318,9 @@ func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 
 	// Convenient to write test procedures
 
-	var st unix.Stat_t
-
-	stat := unix.Stat
-	if c.IsNoDereference() {
-		stat = unix.Lstat
-	}
-
-	if c.IsChanges() || c.IsVerbose() {
-		err := stat(fileName, &st)
-		if err != nil {
-			// todo format error
-			return err
-		}
-
-	}
-
-	if c.IsChanges() || c.IsVerbose() {
-		err = c.printVerbse(fileName, &st, &group{group: g}, u)
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return formatError(fileName, err)
-		}
+	err = c.changeAndVerbse(fileName, g, u)
+	if err != nil {
+		return err
 	}
 
 	chown := os.Chown
@@ -338,6 +348,13 @@ func (c *Chgrp) Chgrp(name string, fileName string, u *User) (err error) {
 			if err != nil {
 				return err
 			}
+
+			err = c.changeAndVerbse(path, g, u)
+			if err != nil {
+				fmt.Printf("err = %s\n", err)
+				return err
+			}
+
 			return chown(path, -1, gid)
 		})
 	}
@@ -360,7 +377,7 @@ func Main(argv []string) {
 	}(&errCode)
 
 	u := User{}
-	u.Init(nil)
+	u.Init(os.Stdout)
 
 	if c.IsReference() {
 		gid, err := c.genGidFromFile(*c.Reference)

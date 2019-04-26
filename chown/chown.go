@@ -384,41 +384,7 @@ func (c *Chown) genUidGidFromFile(fileName string) (uidGid string, err error) {
 	return fmt.Sprintf("%d:%d", st.Uid, st.Gid), nil
 }
 
-func (c *Chown) Chown(name string, fileName string, u *User) (err error) {
-
-	defer func() {
-		if c.Quiet != nil && *c.Quiet {
-			return
-		}
-		//The default err is output to stdout, or io.Writer (for testing convenience)
-		u.writeError(err)
-	}()
-
-	if c.IsPreserveRoot() && fileName == "/" {
-		return fmt.Errorf("chown: it is dangerous to operate recursively on '/'\n" +
-			"chown: use --no-preserve-root to override this failsafe\n")
-	}
-
-	userGroup, err := getUserGroupFromName(name)
-	if err != nil {
-		return err
-	}
-
-	uid, gid := parseUidGid(userGroup)
-
-	if gid == -1 && uid != -1 && isEndSplitter(name) {
-		g, err := user.LookupGroupId(userGroup.user.Uid)
-		if err != nil {
-			return err
-		}
-
-		userGroup.group = (*chownGroup)(g)
-		gid = uid
-	}
-
-	// Convenient to write test procedures
-	u.Uid, u.Gid = uid, gid
-
+func (c *Chown) changeAndVerbse(fileName string, userGroup *userGroup, u *User) (err error) {
 	var st unix.Stat_t
 
 	stat := unix.Stat
@@ -462,6 +428,48 @@ func (c *Chown) Chown(name string, fileName string, u *User) (err error) {
 		return nil
 	}
 
+	return nil
+}
+
+func (c *Chown) Chown(name string, fileName string, u *User) (err error) {
+
+	defer func() {
+		if c.Quiet != nil && *c.Quiet {
+			return
+		}
+		//The default err is output to stdout, or io.Writer (for testing convenience)
+		u.writeError(err)
+	}()
+
+	if c.IsPreserveRoot() && fileName == "/" {
+		return fmt.Errorf("chown: it is dangerous to operate recursively on '/'\n" +
+			"chown: use --no-preserve-root to override this failsafe\n")
+	}
+
+	userGroup, err := getUserGroupFromName(name)
+	if err != nil {
+		return err
+	}
+
+	uid, gid := parseUidGid(userGroup)
+
+	if gid == -1 && uid != -1 && isEndSplitter(name) {
+		g, err := user.LookupGroupId(userGroup.user.Uid)
+		if err != nil {
+			return err
+		}
+
+		userGroup.group = (*chownGroup)(g)
+		gid = uid
+	}
+
+	// Convenient to write test procedures
+	u.Uid, u.Gid = uid, gid
+
+	if err = c.changeAndVerbse(fileName, userGroup, u); err != nil {
+		return err
+	}
+
 	chown := os.Chown
 
 	if c.IsNoDereference() {
@@ -484,6 +492,11 @@ func (c *Chown) Chown(name string, fileName string, u *User) (err error) {
 			if err != nil {
 				return err
 			}
+
+			if err := c.changeAndVerbse(path, userGroup, u); err != nil {
+				return err
+			}
+
 			return chown(path, uid, gid)
 		})
 	}
