@@ -20,6 +20,7 @@ import (
 	"github.com/guonaihong/coreutils/touch"
 	"github.com/guonaihong/coreutils/tr"
 	"github.com/guonaihong/coreutils/true"
+	"github.com/guonaihong/coreutils/uname"
 	"github.com/guonaihong/coreutils/uniq"
 	"github.com/guonaihong/coreutils/whoami"
 	"github.com/guonaihong/coreutils/yes"
@@ -102,8 +103,12 @@ func main() {
 		tr.Main(os.Args[1:])
 	})
 
-	parent.SubCommand("true", "Use the true subcommand", func() {
+	parent.SubCommand("true", "Use the true unamuname", func() {
 		true.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("uname", "Use the uname subcommand", func() {
+		uname.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("uniq", "Use the uniq subcommand", func() {

@@ -42,6 +42,7 @@ If you want to use the cat command
 * tac [detail](./tac/README.md)
 * tr [detail](./tr/README.md)
 * true [detail](./true/README.md)
+* uname [detail](./uname/README.md)
 * uniq [detail](./uniq/README.md)
 * whoami [detail](./whoami/README.md)
 * yes [detail](./yes/README.md)
@@ -50,4 +51,4 @@ If you want to use the cat command
 * sleep [detail](./sleep/README.md)
 
 ## progress
-progress = 22 / 86 = 25%
+progress = 23 / 86 = 26%
