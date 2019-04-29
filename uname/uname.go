@@ -1,15 +1,13 @@
 package uname
 
 import (
-	"bytes"
 	_ "fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
+	"golang.org/x/sys/unix"
 	"io"
 	"os"
 	"runtime"
-	"syscall"
-	"unsafe"
 )
 
 type Uname struct {
@@ -116,32 +114,33 @@ func New(argv []string) (*Uname, []string) {
 }
 
 func (u *Uname) shouldBindUname(name *utsname) {
-	buf := syscall.Utsname{}
+	buf := unix.Utsname{}
 
-	syscall.Uname(&buf)
+	unix.Uname(&buf)
 
 try:
 	if u.isKernelName() {
-		name.Sysname = truncated0Bytes(buf.Sysname)
+		name.Sysname = buf.Sysname[:]
 		u.count++
 	}
 
 	if u.isNodeName() {
-		name.Nodename = truncated0Bytes(buf.Nodename)
+		name.Nodename = buf.Nodename[:]
 		u.count++
 	}
 
 	if u.isKernelRelease() {
-		name.Release = truncated0Bytes(buf.Release)
+		name.Release = buf.Release[:]
 		u.count++
 	}
 
 	if u.isKernelVersion() {
-		name.Version = truncated0Bytes(buf.Version)
+		name.Version = buf.Version[:]
 		u.count++
 	}
 
-	name.Machine = truncated0Bytes(buf.Machine)
+	name.Machine = buf.Machine[:]
+
 	if u.isMachine() {
 		u.count++
 	}
@@ -241,19 +240,6 @@ func getOsName() []byte {
 	}
 
 	return []byte(osName)
-}
-
-func truncated0Bytes(b [65]int8) []byte {
-	var rv []byte
-
-	addr := (*[len(b)]byte)(unsafe.Pointer(&b[0]))
-	rv = addr[:]
-	pos := bytes.IndexByte(rv, 0)
-	if pos != -1 {
-		rv = rv[:pos]
-	}
-
-	return rv
 }
 
 func Main(argv []string) {

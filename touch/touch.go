@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -260,19 +259,14 @@ func isNotExist(name string) bool {
 }
 
 func statTimes(name string) (atime, mtime, ctime time.Time, err error) {
-	fi, err := os.Stat(name)
+	var stat unix.Stat_t
+	err = unix.Stat(name, &stat)
 	if err != nil {
 		return
 	}
 
-	mtime = fi.ModTime()
-	stat, ok := fi.Sys().(*syscall.Stat_t)
-	if !ok {
-		now := time.Now()
-		return now, now, now, nil
-	}
-
 	atime = time.Unix(int64(stat.Atim.Sec), int64(stat.Atim.Nsec))
+	mtime = time.Unix(int64(stat.Mtim.Sec), int64(stat.Mtim.Nsec))
 	ctime = time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec))
 	return
 }

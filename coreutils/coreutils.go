@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/guonaihong/coreutils/base32"
+	"github.com/guonaihong/coreutils/base64"
 	"github.com/guonaihong/coreutils/basename"
 	"github.com/guonaihong/coreutils/cat"
 	"github.com/guonaihong/coreutils/chgrp"
@@ -30,6 +32,14 @@ import (
 
 func main() {
 	parent := flag.NewParentCommand(os.Args[0])
+
+	parent.SubCommand("base32", "Use the base32 subcommand", func() {
+		base32.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("base64", "Use the base64 subcommand", func() {
+		base64.Main(os.Args[1:])
+	})
 
 	parent.SubCommand("cat", "Use the cat subcommand", func() {
 		cat.Main(os.Args[1:])
@@ -103,7 +113,7 @@ func main() {
 		tr.Main(os.Args[1:])
 	})
 
-	parent.SubCommand("true", "Use the true unamuname", func() {
+	parent.SubCommand("true", "Use the true subcommand", func() {
 		true.Main(os.Args[1:])
 	})
 

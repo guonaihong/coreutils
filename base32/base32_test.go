@@ -1,4 +1,4 @@
-package main
+package base32
 
 import (
 	"bytes"

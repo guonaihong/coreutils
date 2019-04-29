@@ -1,4 +1,4 @@
-package main
+package base32
 
 import (
 	"encoding/base32"
@@ -26,7 +26,7 @@ func New(argv []string) (*Base32, []string) {
 
 	b.Wrap = command.Opt("w, wrap", "wrap encoded lines after COLS character (default 76).\n"+
 		"Use 0 to disable line wrapping").
-		Flags(flag.PosixShort).NewInt(0)
+		Flags(flag.PosixShort).NewInt(76)
 
 	command.Parse(argv[1:])
 	args := command.Args()
