@@ -1,6 +1,7 @@
 package uname
 
 import (
+	"bytes"
 	_ "fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
@@ -113,6 +114,14 @@ func New(argv []string) (*Uname, []string) {
 
 }
 
+func truncated0Bytes(b []byte) []byte {
+	pos := bytes.IndexByte(b, 0)
+	if pos == -1 {
+		return b
+	}
+	return b[:pos]
+}
+
 func (u *Uname) shouldBindUname(name *utsname) {
 	buf := unix.Utsname{}
 
@@ -120,26 +129,26 @@ func (u *Uname) shouldBindUname(name *utsname) {
 
 try:
 	if u.isKernelName() {
-		name.Sysname = buf.Sysname[:]
+		name.Sysname = truncated0Bytes(buf.Sysname[:])
 		u.count++
 	}
 
 	if u.isNodeName() {
-		name.Nodename = buf.Nodename[:]
+		name.Nodename = truncated0Bytes(buf.Nodename[:])
 		u.count++
 	}
 
 	if u.isKernelRelease() {
-		name.Release = buf.Release[:]
+		name.Release = truncated0Bytes(buf.Release[:])
 		u.count++
 	}
 
 	if u.isKernelVersion() {
-		name.Version = buf.Version[:]
+		name.Version = truncated0Bytes(buf.Version[:])
 		u.count++
 	}
 
-	name.Machine = buf.Machine[:]
+	name.Machine = truncated0Bytes(buf.Machine[:])
 
 	if u.isMachine() {
 		u.count++
