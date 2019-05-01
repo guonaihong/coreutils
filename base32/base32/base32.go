@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/guonaihong/coreutils/base32"
+	"os"
 )
 
 func main() {

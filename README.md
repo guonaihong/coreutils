@@ -26,6 +26,8 @@ If you want to use the cat command
 ```
 
 ## The completed command is as follows
+* base32 [detail](./base32/README.md)
+* base64 [detail](./base64/README.md)
 * basename [detail](./basename/README.md)
 * cat [detail](./cat/README.md)
 * chgrp [detail](./chgrp/README.md)
@@ -51,4 +53,4 @@ If you want to use the cat command
 * sleep [detail](./sleep/README.md)
 
 ## progress
-progress = 23 / 86 = 26%
+progress = 25 / 86 = 29%
