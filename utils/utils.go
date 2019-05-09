@@ -15,12 +15,29 @@ func Die(format string, a ...interface{}) {
 	os.Exit(1)
 }
 
-func OpenInputFd(fileName string) (*os.File, error) {
-	if fileName == "-" {
-		return os.Stdin, nil
+type File struct {
+	fd *os.File
+}
+
+func (f *File) Close() {
+	if f.fd == os.Stdin {
+		return
 	}
 
-	return os.Open(fileName)
+	f.fd.Close()
+}
+
+func OpenInFile(fileName string) (*File, error) {
+	if fileName == "-" {
+		return &File{fd: os.Stdout}, nil
+	}
+
+	fd, err := os.Create(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &File{fd: fd}, nil
 }
 
 func OpenOutputFd(fileName string) (*os.File, error) {
