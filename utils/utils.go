@@ -16,20 +16,20 @@ func Die(format string, a ...interface{}) {
 }
 
 type File struct {
-	fd *os.File
+	*os.File
 }
 
 func (f *File) Close() {
-	if f.fd == os.Stdin {
+	if f.File == os.Stdin {
 		return
 	}
 
-	f.fd.Close()
+	f.File.Close()
 }
 
-func OpenInFile(fileName string) (*File, error) {
+func OpenFile(fileName string) (*File, error) {
 	if fileName == "-" {
-		return &File{fd: os.Stdout}, nil
+		return &File{File: os.Stdout}, nil
 	}
 
 	fd, err := os.Create(fileName)
@@ -37,7 +37,7 @@ func OpenInFile(fileName string) (*File, error) {
 		return nil, err
 	}
 
-	return &File{fd: fd}, nil
+	return &File{File: fd}, nil
 }
 
 func OpenOutputFd(fileName string) (*os.File, error) {

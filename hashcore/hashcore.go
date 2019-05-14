@@ -1,12 +1,18 @@
 package hashcore
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
+	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"hash"
+	"io"
+	"os"
 )
 
 type Type int
@@ -19,6 +25,25 @@ const (
 	Sha384
 	Sha512
 )
+
+func (t Type) String() string {
+	switch t {
+	case Md5:
+		return "MD5"
+	case Sha1:
+		return "SHA1"
+	case Sha256:
+		return "SHA256"
+	case Sha224:
+		return "SHA224"
+	case Sha384:
+		return "SHA384"
+	case Sha512:
+		return "SHA512"
+	}
+
+	panic("unkown")
+}
 
 type HashCore struct {
 	Binary        *bool
@@ -64,15 +89,42 @@ func New(argv []string, hashName string) (*HashCore, []string) {
 
 	command.Parse(argv[1:])
 
-	return &command, command.Args()
+	return hash, command.Args()
 }
 
-func (h *HashCore) Check() {
+func (h *HashCore) CheckHash(fileName string) error {
+
+	fd, err := utils.OpenFile(fileName)
+	if err != nil {
+		return err
+	}
+
+	defer fd.Close()
+
+	br := bufio.NewReader(fd)
+
+	for {
+
+		l, e := br.ReadBytes('\n')
+
+		if e != nil && len(l) == 0 {
+			break
+		}
+
+		hashAndFile := bytes.Fields(l)
+		if len(hashAndFile) == 2 {
+
+		}
+	}
 }
 
-func (h *HashCore) Hash(t Type, fileName string) error {
+func (h *HashCore) IsTag() bool {
+	return h.Tag != nil && *h.Tag
+}
 
-	fd, err := utils.OpenInFile(fileName)
+func (h *HashCore) Hash(t Type, fileName string, w io.Writer) error {
+
+	fd, err := utils.OpenFile(fileName)
 	if err != nil {
 		return err
 	}
@@ -80,21 +132,37 @@ func (h *HashCore) Hash(t Type, fileName string) error {
 
 	switch t {
 	case Md5:
-		h.hashVal = md5.New()
+		h.hash = md5.New()
 	case Sha1:
-		h.hashVal = sha1.New()
+		h.hash = sha1.New()
 	case Sha224:
-		h.hashVal = sha256.New224()
+		h.hash = sha256.New224()
 	case Sha256:
-		h.hashVal = sha256.New()
+		h.hash = sha256.New()
 	case Sha384:
-		h.hashVal = sha521.New384()
+		h.hash = sha512.New384()
 	case Sha512:
-		h.hashVal = sha512.New()
+		h.hash = sha512.New()
 	}
 
 	io.Copy(h.hash, fd)
+
+	if !h.IsTag() {
+		fmt.Fprintf(w, "%x  %s\n", h.hash.Sum(nil), fileName)
+	} else {
+		fmt.Fprintf(w, "%s (%s) = %x\n", t, fileName, h.hash.Sum(nil))
+	}
+
+	return nil
 }
 
-func Main(argv []string) {
+func Main(argv []string, t Type) {
+	hash, args := New(argv, t.String())
+	if len(args) == 0 {
+		args = append(args, "-")
+	}
+
+	for _, a := range args {
+		hash.Hash(t, a, os.Stdout)
+	}
 }
