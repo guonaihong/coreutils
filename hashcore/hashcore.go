@@ -13,6 +13,7 @@ import (
 	"hash"
 	"io"
 	"os"
+	"strings"
 )
 
 type Type int
@@ -92,7 +93,7 @@ func New(argv []string, hashName string) (*HashCore, []string) {
 	return hash, command.Args()
 }
 
-func (h *HashCore) CheckHash(fileName string) error {
+func (h *HashCore) CheckHash(t Type, fileName string, w io.Writer) error {
 
 	fd, err := utils.OpenFile(fileName)
 	if err != nil {
@@ -103,6 +104,29 @@ func (h *HashCore) CheckHash(fileName string) error {
 
 	br := bufio.NewReader(fd)
 
+	var out bytes.Buffer
+
+	var formatFail, checkFail, readFail int
+
+	hashName := strings.ToLower(t.String())
+	defer func(f, c, read *int) {
+		if *f > 0 {
+			fmt.Fprintf(w, "%ssum: WARNING: %d line is improperly formatted\n",
+				hashName, *f)
+		}
+
+		if *c > 0 {
+			fmt.Fprintf(w, "%ssum: WARNING: %d computed checksums did NOT match\n",
+				hashName, *c)
+		}
+
+		if *read > 0 {
+			fmt.Fprintf(w, "%ssum: WARNING: %d listed file could not be read\n",
+				hashName, *read)
+		}
+
+	}(&formatFail, &checkFail, &readFail)
+
 	for {
 
 		l, e := br.ReadBytes('\n')
@@ -112,10 +136,40 @@ func (h *HashCore) CheckHash(fileName string) error {
 		}
 
 		hashAndFile := bytes.Fields(l)
-		if len(hashAndFile) == 2 {
 
+		var fileName string
+
+		switch {
+		case len(hashAndFile) == 2:
+			fileName = string(hashAndFile[0])
+		case len(hashAndFile) == 3:
+			_, err := fmt.Sscanf(string(hashAndFile[1]), "(%s)", &fileName)
+			if err != nil {
+				return err
+			}
+
+		default:
+			formatFail++
+		}
+
+		err := h.Hash(t, fileName, &out)
+		if err != nil {
+			fmt.Fprintf(w, "%s: %s\n", hashName, err.Error())
+			readFail++
+			continue
+		}
+
+		if bytes.Equal(out.Bytes(), l) {
+			fmt.Fprintf(w, "%s: OK\n", fileName)
+		} else {
+			fmt.Fprintf(w, "%s: FAILED\n", fileName)
 		}
 	}
+	return nil
+}
+
+func (h *HashCore) IsCheck() bool {
+	return h.Check != nil && len(*h.Check) > 0
 }
 
 func (h *HashCore) IsTag() bool {
@@ -163,6 +217,10 @@ func Main(argv []string, t Type) {
 	}
 
 	for _, a := range args {
-		hash.Hash(t, a, os.Stdout)
+		if hash.IsCheck() {
+			hash.CheckHash(t, a, os.Stdout)
+		} else {
+			hash.Hash(t, a, os.Stdout)
+		}
 	}
 }
