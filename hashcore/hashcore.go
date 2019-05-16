@@ -7,6 +7,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"errors"
 	"fmt"
 	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
@@ -93,11 +94,27 @@ func New(argv []string, hashName string) (*HashCore, []string) {
 	return hash, command.Args()
 }
 
-func (h *HashCore) CheckHash(t Type, fileName string, w io.Writer) error {
+func (h *HashCore) formatError(t Type, fileName string, err error) string {
+	switch e := err.(type) {
+	case *os.PathError:
+		err = e.Err
+		if os.IsNotExist(err) {
+
+			return fmt.Sprintf("%ssum: %s: No such file or directory\n",
+				strings.ToLower(t.String()), fileName)
+		}
+	}
+	return err.Error()
+}
+
+func (h *HashCore) CheckHash(t Type, formatFail *int, fileName string, w io.Writer) error {
 
 	fd, err := utils.OpenFile(fileName)
 	if err != nil {
-		return err
+		if h.IsStatus() {
+			os.Exit(1)
+		}
+		return errors.New(h.formatError(t, fileName, err))
 	}
 
 	defer fd.Close()
@@ -106,10 +123,10 @@ func (h *HashCore) CheckHash(t Type, fileName string, w io.Writer) error {
 
 	var out bytes.Buffer
 
-	var formatFail, checkFail, readFail int
+	var checkFail, readFail, done int
 
 	hashName := strings.ToLower(t.String())
-	defer func(f, c, read *int) {
+	defer func(f, c, read, done *int) {
 		if *f > 0 {
 			fmt.Fprintf(w, "%ssum: WARNING: %d line is improperly formatted\n",
 				hashName, *f)
@@ -125,9 +142,13 @@ func (h *HashCore) CheckHash(t Type, fileName string, w io.Writer) error {
 				hashName, *read)
 		}
 
-	}(&formatFail, &checkFail, &readFail)
+		if h.IsIgnoreMissing() && *done == 0 {
+			fmt.Fprintf(w, "%ssum: %s: no file was verified\n",
+				hashName, fileName)
+		}
+	}(formatFail, &checkFail, &readFail, &done)
 
-	for {
+	for no := 1; ; no++ {
 
 		l, e := br.ReadBytes('\n')
 
@@ -141,31 +162,63 @@ func (h *HashCore) CheckHash(t Type, fileName string, w io.Writer) error {
 
 		switch {
 		case len(hashAndFile) == 2:
-			fileName = string(hashAndFile[0])
+			fileName = string(hashAndFile[1])
+			h.Binary = utils.Bool(false)
+			if len(fileName) > 0 && fileName[0] == '*' {
+				fileName = fileName[1:]
+				h.Binary = utils.Bool(true)
+			}
 		case len(hashAndFile) == 3:
 			_, err := fmt.Sscanf(string(hashAndFile[1]), "(%s)", &fileName)
 			if err != nil {
 				return err
 			}
 
+			if h.Warn != nil && *h.Warn {
+				fmt.Fprintf(w, "%sum: %s: %d: improperly formatted MD5 checksum line\n",
+					hashName, fileName, no)
+			}
 		default:
-			formatFail++
+			(*formatFail)++
 		}
 
 		err := h.Hash(t, fileName, &out)
 		if err != nil {
-			fmt.Fprintf(w, "%s: %s\n", hashName, err.Error())
-			readFail++
+			if !h.IsIgnoreMissing() {
+				fmt.Fprintf(w, h.formatError(t, fileName, err))
+				fmt.Fprintf(w, "%s: FAILED open or read\n", fileName)
+				readFail++
+			}
+			if h.IsStatus() {
+				os.Exit(1)
+			}
 			continue
 		}
 
 		if bytes.Equal(out.Bytes(), l) {
-			fmt.Fprintf(w, "%s: OK\n", fileName)
+			if !h.IsQuiet() {
+				fmt.Fprintf(w, "%s: OK\n", fileName)
+			}
+			done++
 		} else {
-			fmt.Fprintf(w, "%s: FAILED\n", fileName)
+			if !h.IsIgnoreMissing() {
+				fmt.Fprintf(w, "%s: FAILED\n", fileName)
+			}
 		}
 	}
 	return nil
+}
+
+func (h *HashCore) IsStatus() bool {
+	return h.Status != nil && *h.Status
+}
+
+func (h *HashCore) IsIgnoreMissing() bool {
+	return h.IgnoreMissing != nil && *h.IgnoreMissing
+}
+
+func (h *HashCore) IsQuiet() bool {
+	return h.Quiet != nil && *h.Quiet
 }
 
 func (h *HashCore) IsCheck() bool {
@@ -177,6 +230,11 @@ func (h *HashCore) IsTag() bool {
 }
 
 func (h *HashCore) Hash(t Type, fileName string, w io.Writer) error {
+
+	asterisk := "  "
+	if h.Binary != nil && *h.Binary {
+		asterisk = " *"
+	}
 
 	fd, err := utils.OpenFile(fileName)
 	if err != nil {
@@ -202,7 +260,7 @@ func (h *HashCore) Hash(t Type, fileName string, w io.Writer) error {
 	io.Copy(h.hash, fd)
 
 	if !h.IsTag() {
-		fmt.Fprintf(w, "%x  %s\n", h.hash.Sum(nil), fileName)
+		fmt.Fprintf(w, "%x%s%s\n", h.hash.Sum(nil), asterisk, fileName)
 	} else {
 		fmt.Fprintf(w, "%s (%s) = %x\n", t, fileName, h.hash.Sum(nil))
 	}
@@ -216,11 +274,26 @@ func Main(argv []string, t Type) {
 		args = append(args, "-")
 	}
 
-	for _, a := range args {
+	var isFormatFail bool
+	for _, fileName := range args {
+		var err error
+		var formatFail int
+
 		if hash.IsCheck() {
-			hash.CheckHash(t, a, os.Stdout)
+			err = hash.CheckHash(t, &formatFail, fileName, os.Stdout)
+			isFormatFail = formatFail > 0
 		} else {
-			hash.Hash(t, a, os.Stdout)
+			hash.Hash(t, fileName, os.Stdout)
+		}
+
+		if err != nil {
+			os.Stdout.Write([]byte(err.Error()))
+		}
+	}
+
+	if hash.Strict != nil && *hash.Strict {
+		if isFormatFail {
+			os.Exit(1)
 		}
 	}
 }

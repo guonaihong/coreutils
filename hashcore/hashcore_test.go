@@ -1,23 +1,34 @@
 package hashcore
 
 import (
+	"github.com/guonaihong/coreutils/utils"
 	"strings"
 	"testing"
 )
 
-const errMsg = `md5sum: md52.sumx: No such file or directory
+const errMsgFileDoesNotExist = `md5sum: not.sum: No such file or directory
 md5sum: kao: No such file or directory
 kao: FAILED open or read
 md5sum: WARNING: 1 listed file could not be read
 `
+const okMsg = `md5sum.sum: OK
+`
 
-func testHashCheck(need string, t *testing.T) {
+const errMsgIgnoreMissing = `md5sum: not.sum: No such file or directory
+md5sum: md5sum.sum: no file was verified
+`
+
+func testHashCheck(hashType Type, need string, fileNames []string, quiet bool, ignoreMissing bool, t *testing.T) {
 	var s strings.Builder
+	var formatFail int
 	h := HashCore{}
-	fileNames := []string{"md52.sumx", "md5sum.sum"}
-
+	h.Quiet = utils.Bool(quiet)
+	h.IgnoreMissing = utils.Bool(ignoreMissing)
 	for _, f := range fileNames {
-		h.CheckHash(Md5, f, &s)
+		err := h.CheckHash(hashType, &formatFail, f, &s)
+		if err != nil {
+			s.WriteString(err.Error())
+		}
 	}
 
 	if need != s.String() {
@@ -25,6 +36,19 @@ func testHashCheck(need string, t *testing.T) {
 	}
 }
 
-func TestHashCheck(t *testing.T) {
-	testHashCheck(errMsg, t)
+func TestHashCheckFileDoesNotExist(t *testing.T) {
+	testHashCheck(Md5, errMsgFileDoesNotExist, []string{"not.sum", "md5sum.sum"}, false, false, t)
+	testHashCheck(Md5, errMsgFileDoesNotExist, []string{"not.sum", "md5sum.sum"}, true, false, t)
+	testHashCheck(Md5, errMsgIgnoreMissing, []string{"not.sum", "md5sum.sum"}, false, true, t)
+	testHashCheck(Md5, errMsgIgnoreMissing, []string{"not.sum", "md5sum.sum"}, true, true, t)
+}
+
+func TestHashFileExist2(t *testing.T) {
+	testHashCheck(Md5, okMsg, []string{"ok.md5.sum"}, false, false, t)
+	testHashCheck(Md5, "", []string{"ok.md5.sum"}, true, false, t)
+}
+
+func TestHashFileExist1(t *testing.T) {
+	testHashCheck(Md5, okMsg, []string{"ok.binary.md5.sum"}, false, false, t)
+	testHashCheck(Md5, "", []string{"ok.md5.sum"}, true, false, t)
 }

@@ -32,7 +32,7 @@ func OpenFile(fileName string) (*File, error) {
 		return &File{File: os.Stdout}, nil
 	}
 
-	fd, err := os.Create(fileName)
+	fd, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
 	}
