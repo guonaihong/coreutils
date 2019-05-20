@@ -266,7 +266,7 @@ func Main(argv []string) {
 	tac, args := New(argv)
 
 	for _, fileName := range args {
-		f, err := utils.OpenInputFd(fileName)
+		f, err := utils.OpenFile(fileName)
 		if err != nil {
 			utils.Die("tac: %s\n", err)
 		}
@@ -275,6 +275,6 @@ func Main(argv []string) {
 		if err != nil {
 			utils.Die("tac: %s\n", err)
 		}
-		utils.CloseInputFd(f)
+		f.Close()
 	}
 }

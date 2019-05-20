@@ -29,7 +29,7 @@ func (f *File) Close() {
 
 func OpenFile(fileName string) (*File, error) {
 	if fileName == "-" {
-		return &File{File: os.Stdout}, nil
+		return &File{File: os.Stdin}, nil
 	}
 
 	fd, err := os.Open(fileName)
@@ -46,12 +46,6 @@ func OpenOutputFd(fileName string) (*os.File, error) {
 	}
 
 	return os.Create(fileName)
-}
-
-func CloseInputFd(fd *os.File) {
-	if fd != os.Stdin {
-		fd.Close()
-	}
 }
 
 func CloseOutputFd(fd *os.File) {

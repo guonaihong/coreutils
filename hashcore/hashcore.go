@@ -60,7 +60,7 @@ type HashCore struct {
 	hash          hash.Hash
 }
 
-func New(argv []string, hashName string) (*HashCore, []string) {
+func New(argv []string, hashName string, t Type) (*HashCore, []string) {
 	hash := &HashCore{}
 
 	command := flag.NewFlagSet(argv[0], flag.ExitOnError)
@@ -68,7 +68,7 @@ func New(argv []string, hashName string) (*HashCore, []string) {
 	hash.Binary = command.Opt("b, binary", "read in binary mode").
 		Flags(flag.PosixShort).NewBool(false)
 
-	hash.Check = command.Opt("c, check", "read MD5 sums from the FILEs and check them").
+	hash.Check = command.Opt("c, check", fmt.Sprintf("read %s sums from the FILEs and check them", t)).
 		Flags(flag.PosixShort).NewString("")
 
 	hash.Tag = command.Opt("tag", "create a BSD-style checksum").
@@ -269,7 +269,7 @@ func (h *HashCore) Hash(t Type, fileName string, w io.Writer) error {
 }
 
 func Main(argv []string, t Type) {
-	hash, args := New(argv, t.String())
+	hash, args := New(argv, t.String(), t)
 	if len(args) == 0 {
 		args = append(args, "-")
 	}

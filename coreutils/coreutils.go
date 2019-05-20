@@ -11,9 +11,15 @@ import (
 	"github.com/guonaihong/coreutils/dirname"
 	"github.com/guonaihong/coreutils/echo"
 	"github.com/guonaihong/coreutils/head"
+	"github.com/guonaihong/coreutils/md5sum"
 	"github.com/guonaihong/coreutils/paste"
 	"github.com/guonaihong/coreutils/rmdir"
 	"github.com/guonaihong/coreutils/seq"
+	"github.com/guonaihong/coreutils/sha1sum"
+	"github.com/guonaihong/coreutils/sha224sum"
+	"github.com/guonaihong/coreutils/sha256sum"
+	"github.com/guonaihong/coreutils/sha384sum"
+	"github.com/guonaihong/coreutils/sha512sum"
 	"github.com/guonaihong/coreutils/shuf"
 	"github.com/guonaihong/coreutils/sleep"
 	"github.com/guonaihong/coreutils/tac"
@@ -81,8 +87,32 @@ func main() {
 		head.Main(os.Args[1:])
 	})
 
+	parent.SubCommand("md5sum", "Use the md5sum subcommand", func() {
+		md5sum.Main(os.Args[0:])
+	})
+
 	parent.SubCommand("seq", "Use the seq subcommand", func() {
 		seq.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("sha1sum", "Use the sha1sum subcommand", func() {
+		sha1sum.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("sha224sum", "Use the sha224sum subcommand", func() {
+		sha224sum.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("sha256sum", "Use the sha256sum subcommand", func() {
+		sha256sum.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("sha384sum", "Use the sha384sum subcommand", func() {
+		sha384sum.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("sha512sum", "Use the sha512sum subcommand", func() {
+		sha512sum.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("shuf", "Use the shuf subcommand", func() {

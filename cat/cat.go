@@ -191,13 +191,13 @@ func Main(argv []string) {
 
 	if len(args) > 0 {
 		for _, fileName := range args {
-			f, err := utils.OpenInputFd(fileName)
+			f, err := utils.OpenFile(fileName)
 			if err != nil {
 				utils.Die("cat: %s\n", err)
 			}
 
 			c.Cat(f, os.Stdout)
-			utils.CloseInputFd(f)
+			f.Close()
 		}
 		return
 	}

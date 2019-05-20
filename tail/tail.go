@@ -283,12 +283,12 @@ func Main(argv []string) {
 	t, args := New(argv)
 
 	for _, v := range args {
-		fd, err := utils.OpenInputFd(v)
+		fd, err := utils.OpenFile(v)
 		if err != nil {
 			utils.Die("head:%s\n", err)
 		}
 
 		t.main(fd, os.Stdout, v)
-		utils.CloseInputFd(fd)
+		fd.Close()
 	}
 }

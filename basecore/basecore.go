@@ -197,12 +197,12 @@ func Main(argv []string, baseName string) {
 	}
 
 	for _, fileName := range args {
-		f, err := utils.OpenInputFd(fileName)
+		f, err := utils.OpenFile(fileName)
 		if err != nil {
 			utils.Die("base32: %s\n", err)
 		}
 
 		b.Base(f, os.Stdout)
-		utils.CloseInputFd(f)
+		f.Close()
 	}
 }

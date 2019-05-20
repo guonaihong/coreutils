@@ -320,12 +320,12 @@ func Main(argv []string) {
 	}
 
 	for _, v := range args {
-		fd, err := utils.OpenInputFd(v)
+		fd, err := utils.OpenFile(v)
 		if err != nil {
 			utils.Die("cut: %s\n", err)
 		}
 
 		c.Cut(fd, os.Stdout)
-		utils.CloseInputFd(fd)
+		fd.Close()
 	}
 }

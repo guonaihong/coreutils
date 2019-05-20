@@ -36,6 +36,7 @@ If you want to use the cat command
 * dirname [detail](./dirname/README.md)
 * echo [detail](./echo/README.md)
 * head [detail](./head/README.md)
+* md5sum [detail](./md5sum/README.md)
 * paste [detail](./paste/README.md)
 * rmdir [detail](./rmdir/README.md)
 * tee [detail](./tee/README.md)
@@ -50,7 +51,12 @@ If you want to use the cat command
 * yes [detail](./yes/README.md)
 * shuf [detail](./shuf/README.md)
 * seq [detail](./seq/README.md)
+* sha1sum [detail](./sha1sum/README.md)
+* sha224sum [detail](./sha224sum/README.md)
+* sha256sum [detail](./sha256sum/README.md)
+* sha384sum [detail](./sha384sum/README.md)
+* sha512sum [detail](./sha512/README.md)
 * sleep [detail](./sleep/README.md)
 
 ## progress
-progress = 25 / 86 = 29%
+progress = 31 / 92 = 33%

@@ -93,12 +93,12 @@ func (s *Shuf) readFromFile(name string, r *result) error {
 		s.lineDelim = byte('\000')
 	}
 
-	fd, err := utils.OpenInputFd(name)
+	fd, err := utils.OpenFile(name)
 	if err != nil {
 		return err
 	}
 
-	defer utils.CloseInputFd(fd)
+	defer fd.Close()
 
 	br := bufio.NewReader(fd)
 
