@@ -20,7 +20,7 @@ func TestNumber(t *testing.T) {
 	var lastLine []byte
 	c := Cat{}
 
-	c.Number = SetBool(true)
+	c.Number = true
 
 	in := strings.NewReader(testNumber)
 	out := &bytes.Buffer{}
@@ -91,8 +91,7 @@ func TestEnds(t *testing.T) {
 
 func TestSqueezeBlank(t *testing.T) {
 	c := Cat{}
-	b := true
-	c.SqueezeBlank = &b
+	c.SqueezeBlank = true
 
 	rs := strings.NewReader("\n\n\n12\n\n\n\n34\n\n\n")
 	w := &bytes.Buffer{}
@@ -111,8 +110,7 @@ func TestSqueezeBlank(t *testing.T) {
 
 func TestNumberNonblank(t *testing.T) {
 	c := Cat{}
-	b := true
-	c.NumberNonblank = &b
+	c.NumberNonblank = true
 
 	rs := strings.NewReader("\n\n\n12\n\n\n\n34\n\n\n")
 	w := &bytes.Buffer{}

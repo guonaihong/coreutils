@@ -12,12 +12,12 @@ import (
 )
 
 type Cat struct {
-	NumberNonblank  *bool
-	ShowEnds        *bool
-	Number          *bool
-	SqueezeBlank    *bool
-	ShowTabs        *bool
-	ShowNonprinting *bool
+	NumberNonblank  bool
+	ShowEnds        bool
+	Number          bool
+	SqueezeBlank    bool
+	ShowTabs        bool
+	ShowNonprinting bool
 	oldNew          []string
 }
 
@@ -53,49 +53,49 @@ func New(argv []string) (*Cat, []string) {
 	showAll := command.Opt("A, show-all", "equivalent to -vET").
 		Flags(flag.PosixShort).NewBool(false)
 
-	c.NumberNonblank = command.Opt("b, number-nonblank",
+	command.Opt("b, number-nonblank",
 		"number nonempty output lines, overrides -n").
-		Flags(flag.PosixShort).NewBool(false)
+		Flags(flag.PosixShort).Var(&c.NumberNonblank)
 
 	e := command.Opt("e", "equivalent to -vE").
 		Flags(flag.PosixShort).NewBool(false)
 
-	c.ShowEnds = command.Opt("E, show-end", "display $ at end of each line").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("E, show-end", "display $ at end of each line").
+		Flags(flag.PosixShort).Var(&c.ShowEnds)
 
-	c.Number = command.Opt("n, number", "number all output line").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("n, number", "number all output line").
+		Flags(flag.PosixShort).Var(&c.Number)
 
-	c.SqueezeBlank = command.Opt("s, squeeze-blank",
+	command.Opt("s, squeeze-blank",
 		"suppress repeated empty output lines").
-		Flags(flag.PosixShort).NewBool(false)
+		Flags(flag.PosixShort).Var(&c.SqueezeBlank)
 
 	t := command.Opt("t", "equivalent to -vT").
 		Flags(flag.PosixShort).NewBool(false)
 
-	c.ShowTabs = command.Opt("T, show-tabs", "display TAB characters as ^I").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("T, show-tabs", "display TAB characters as ^I").
+		Flags(flag.PosixShort).Var(&c.ShowTabs)
 
-	c.ShowNonprinting = command.Opt("v, show-nonprinting",
+	command.Opt("v, show-nonprinting",
 		"use ^ and M- notation, except for LFD and TAB").
-		Flags(flag.PosixShort).NewBool(false)
+		Flags(flag.PosixShort).Var(&c.ShowNonprinting)
 
 	command.Parse(argv[1:])
 	args := command.Args()
 
 	if *showAll {
-		*c.ShowNonprinting = true
-		*c.ShowEnds = true
-		*c.ShowTabs = true
+		c.ShowNonprinting = true
+		c.ShowEnds = true
+		c.ShowTabs = true
 	}
 
 	if *e {
-		*c.ShowNonprinting = true
-		*c.ShowEnds = true
+		c.ShowNonprinting = true
+		c.ShowEnds = true
 	}
 	if *t {
-		*c.ShowNonprinting = true
-		*c.ShowTabs = true
+		c.ShowNonprinting = true
+		c.ShowTabs = true
 	}
 
 	return &c, args
@@ -113,22 +113,6 @@ func (c *Cat) SetEnds() {
 	c.oldNew = append(c.oldNew, "\n", "$\n")
 }
 
-func (c *Cat) isNumberNonblank() bool {
-	return c.NumberNonblank != nil && *c.NumberNonblank
-}
-
-func (c *Cat) isNumber() bool {
-	return c.Number != nil && *c.Number
-}
-
-func (c *Cat) isShowNonprinting() bool {
-	return c.ShowNonprinting != nil && *c.ShowNonprinting
-}
-
-func (c *Cat) isSqueezeBlank() bool {
-	return c.SqueezeBlank != nil && *c.SqueezeBlank
-}
-
 func (c *Cat) Cat(rs io.ReadSeeker, w io.Writer) {
 	br := bufio.NewReader(rs)
 	replacer := strings.NewReplacer(c.oldNew...)
@@ -141,7 +125,7 @@ func (c *Cat) Cat(rs io.ReadSeeker, w io.Writer) {
 			break
 		}
 
-		if c.isSqueezeBlank() {
+		if c.SqueezeBlank {
 			if len(bytes.TrimSpace(l)) == 0 {
 				isSpace++
 			} else {
@@ -158,17 +142,17 @@ func (c *Cat) Cat(rs io.ReadSeeker, w io.Writer) {
 			l = []byte(replacer.Replace(string(l)))
 		}
 
-		if c.isShowNonprinting() {
+		if c.ShowNonprinting {
 			l = writeNonblank(l)
 		}
 
-		if c.isNumberNonblank() || c.isNumber() {
+		if c.NumberNonblank || c.Number {
 
-			if c.isNumberNonblank() && len(l) == 1 {
+			if c.NumberNonblank && len(l) == 1 {
 				count--
 			}
 
-			if !(c.isNumberNonblank() && len(l) == 1) {
+			if !(c.NumberNonblank && len(l) == 1) {
 				l = append([]byte(fmt.Sprintf("%6d\t", count)), l...)
 			}
 		}
@@ -181,11 +165,11 @@ func Main(argv []string) {
 
 	c, args := New(argv)
 
-	if *c.ShowEnds {
+	if c.ShowEnds {
 		c.SetEnds()
 	}
 
-	if *c.ShowTabs {
+	if c.ShowTabs {
 		c.SetTab()
 	}
 
