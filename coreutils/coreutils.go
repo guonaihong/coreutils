@@ -13,6 +13,7 @@ import (
 	"github.com/guonaihong/coreutils/head"
 	"github.com/guonaihong/coreutils/md5sum"
 	"github.com/guonaihong/coreutils/paste"
+	"github.com/guonaihong/coreutils/pwd"
 	"github.com/guonaihong/coreutils/rmdir"
 	"github.com/guonaihong/coreutils/seq"
 	"github.com/guonaihong/coreutils/sha1sum"
@@ -65,6 +66,10 @@ func main() {
 
 	parent.SubCommand("paste", "Use the paste subcommand", func() {
 		paste.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("pwd", "Use the pwd subcommand", func() {
+		pwd.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("rmdir", "Use the rmdir subcommand", func() {

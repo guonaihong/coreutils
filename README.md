@@ -38,6 +38,7 @@ If you want to use the cat command
 * head [detail](./head/README.md)
 * md5sum [detail](./md5sum/README.md)
 * paste [detail](./paste/README.md)
+* pwd [detail](./pwd/README.md)
 * rmdir [detail](./rmdir/README.md)
 * tee [detail](./tee/README.md)
 * touch [detail](./touch/README.md)
@@ -59,4 +60,4 @@ If you want to use the cat command
 * sleep [detail](./sleep/README.md)
 
 ## progress
-progress = 31 / 92 = 33%
+progress = 32 / 92 = 34%

@@ -16,6 +16,7 @@ func main() {
 		"echo",
 		"head",
 		"paste",
+		"pwd",
 		"tee",
 		"tail",
 		"tr",
