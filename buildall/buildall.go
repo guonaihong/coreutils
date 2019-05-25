@@ -21,6 +21,7 @@ func main() {
 		"tail",
 		"tr",
 		"true",
+		"uname",
 		"uniq",
 		"whoami",
 		"yes",

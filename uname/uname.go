@@ -3,7 +3,6 @@ package uname
 import (
 	"bytes"
 	_ "fmt"
-	"github.com/guonaihong/coreutils/utils"
 	"github.com/guonaihong/flag"
 	"golang.org/x/sys/unix"
 	"io"
@@ -12,14 +11,14 @@ import (
 )
 
 type Uname struct {
-	KernelName       *bool
-	NodeName         *bool
-	KernelRelease    *bool
-	KernelVersion    *bool
-	Machine          *bool
-	Processor        *bool
-	HardwarePlatform *bool
-	OperatingSystem  *bool
+	KernelName       bool
+	NodeName         bool
+	KernelRelease    bool
+	KernelVersion    bool
+	Machine          bool
+	Processor        bool
+	HardwarePlatform bool
+	OperatingSystem  bool
 	count            int
 }
 
@@ -32,38 +31,6 @@ type utsname struct {
 	OperatingSystem []byte
 }
 
-func (u *Uname) isKernelName() bool {
-	return u.KernelName != nil && *u.KernelName
-}
-
-func (u *Uname) isNodeName() bool {
-	return u.NodeName != nil && *u.NodeName
-}
-
-func (u *Uname) isKernelRelease() bool {
-	return u.KernelRelease != nil && *u.KernelRelease
-}
-
-func (u *Uname) isKernelVersion() bool {
-	return u.KernelVersion != nil && *u.KernelVersion
-}
-
-func (u *Uname) isMachine() bool {
-	return u.Machine != nil && *u.Machine
-}
-
-func (u *Uname) isProcessor() bool {
-	return u.Processor != nil && *u.Processor
-}
-
-func (u *Uname) isHardwarePlatform() bool {
-	return u.HardwarePlatform != nil && *u.HardwarePlatform
-}
-
-func (u *Uname) isOperatingSystem() bool {
-	return u.OperatingSystem != nil && *u.OperatingSystem
-}
-
 func New(argv []string) (*Uname, []string) {
 	u := &Uname{}
 
@@ -73,41 +40,41 @@ func New(argv []string) (*Uname, []string) {
 		"except omit -p and -i if unknown:").
 		Flags(flag.PosixShort).NewBool(false)
 
-	u.KernelName = command.Opt("s, kernel-name", "print the kernel name").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("s, kernel-name", "print the kernel name").
+		Flags(flag.PosixShort).Var(&u.KernelName)
 
-	u.NodeName = command.Opt("n, nodename", "print the network node hostname").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("n, nodename", "print the network node hostname").
+		Flags(flag.PosixShort).Var(&u.NodeName)
 
-	u.KernelRelease = command.Opt("r, kernel-release", "print the kernel release").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("r, kernel-release", "print the kernel release").
+		Flags(flag.PosixShort).Var(&u.KernelRelease)
 
-	u.KernelVersion = command.Opt("v, kernel-version", "print the kernel version").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("v, kernel-version", "print the kernel version").
+		Flags(flag.PosixShort).Var(&u.KernelVersion)
 
-	u.Machine = command.Opt("m, machine", "print the machine hardware name").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("m, machine", "print the machine hardware name").
+		Flags(flag.PosixShort).Var(&u.Machine)
 
-	u.Processor = command.Opt("p, processor", "print the processor type (non-portable)").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("p, processor", "print the processor type (non-portable)").
+		Flags(flag.PosixShort).Var(&u.Processor)
 
-	u.HardwarePlatform = command.Opt("i, hardware-platform", "print the hardware platform (non-portable)").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("i, hardware-platform", "print the hardware platform (non-portable)").
+		Flags(flag.PosixShort).Var(&u.HardwarePlatform)
 
-	u.OperatingSystem = command.Opt("o, operating-system", "print the operating system").
-		Flags(flag.PosixShort).NewBool(false)
+	command.Opt("o, operating-system", "print the operating system").
+		Flags(flag.PosixShort).Var(&u.OperatingSystem)
 
 	command.Parse(argv[1:])
 
 	if all != nil && *all {
-		u.KernelName = utils.Bool(true)
-		u.NodeName = utils.Bool(true)
-		u.KernelRelease = utils.Bool(true)
-		u.KernelVersion = utils.Bool(true)
-		u.Machine = utils.Bool(true)
-		u.Processor = utils.Bool(true)
-		u.HardwarePlatform = utils.Bool(true)
-		u.OperatingSystem = utils.Bool(true)
+		u.KernelName = true
+		u.NodeName = true
+		u.KernelRelease = true
+		u.KernelVersion = true
+		u.Machine = true
+		u.Processor = true
+		u.HardwarePlatform = true
+		u.OperatingSystem = true
 	}
 
 	return u, command.Args()
@@ -128,47 +95,47 @@ func (u *Uname) shouldBindUname(name *utsname) {
 	unix.Uname(&buf)
 
 try:
-	if u.isKernelName() {
+	if u.KernelName {
 		name.Sysname = truncated0Bytes(buf.Sysname[:])
 		u.count++
 	}
 
-	if u.isNodeName() {
+	if u.NodeName {
 		name.Nodename = truncated0Bytes(buf.Nodename[:])
 		u.count++
 	}
 
-	if u.isKernelRelease() {
+	if u.KernelRelease {
 		name.Release = truncated0Bytes(buf.Release[:])
 		u.count++
 	}
 
-	if u.isKernelVersion() {
+	if u.KernelVersion {
 		name.Version = truncated0Bytes(buf.Version[:])
 		u.count++
 	}
 
 	name.Machine = truncated0Bytes(buf.Machine[:])
 
-	if u.isMachine() {
+	if u.Machine {
 		u.count++
 	}
 
-	if u.isHardwarePlatform() {
+	if u.HardwarePlatform {
 		u.count++
 	}
 
-	if u.isProcessor() {
+	if u.Processor {
 		u.count++
 	}
 
-	if u.isOperatingSystem() {
+	if u.OperatingSystem {
 		name.OperatingSystem = getOsName()
 		u.count++
 	}
 
 	if u.count == 0 {
-		u.KernelName = utils.Bool(true)
+		u.KernelName = true
 		goto try
 	}
 }
@@ -186,42 +153,42 @@ func (u *Uname) Uname(w io.Writer) {
 
 	needLine := u.count > 0
 
-	if u.isKernelName() {
+	if u.KernelName {
 		w.Write(name.Sysname)
 		u.writeSpace(w)
 	}
 
-	if u.isNodeName() {
+	if u.NodeName {
 		w.Write(name.Nodename)
 		u.writeSpace(w)
 	}
 
-	if u.isKernelRelease() {
+	if u.KernelRelease {
 		w.Write(name.Release)
 		u.writeSpace(w)
 	}
 
-	if u.isKernelVersion() {
+	if u.KernelVersion {
 		w.Write(name.Version)
 		u.writeSpace(w)
 	}
 
-	if u.isMachine() {
+	if u.Machine {
 		w.Write(name.Machine)
 		u.writeSpace(w)
 	}
 
-	if u.isProcessor() {
+	if u.Processor {
 		w.Write(name.Machine)
 		u.writeSpace(w)
 	}
 
-	if u.isHardwarePlatform() {
+	if u.HardwarePlatform {
 		w.Write(name.Machine)
 		u.writeSpace(w)
 	}
 
-	if u.isOperatingSystem() {
+	if u.OperatingSystem {
 		w.Write(getOsName())
 		u.writeSpace(w)
 	}
