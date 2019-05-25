@@ -10,7 +10,7 @@ func testBytes(src, dst, b string, t *testing.T) {
 	w := &bytes.Buffer{}
 
 	c := Cut{}
-	c.Bytes = &b
+	c.Bytes = b
 	c.LineDelim = '\n'
 	c.Init()
 	c.Cut(strings.NewReader(src), w)
@@ -68,7 +68,7 @@ func testCharacters(src, dst, cstr string, t *testing.T) {
 	w := &bytes.Buffer{}
 
 	c := Cut{}
-	c.Characters = &cstr
+	c.Characters = cstr
 	c.LineDelim = '\n'
 	c.Init()
 	c.Cut(strings.NewReader(src), w)
@@ -120,8 +120,8 @@ func testFieldsDelimiter(src, dst string, delimiter string, fields string, t *te
 	w := &bytes.Buffer{}
 
 	c := Cut{}
-	c.Delimiter = &delimiter
-	c.Fields = &fields
+	c.Delimiter = delimiter
+	c.Fields = fields
 	c.LineDelim = '\n'
 	c.Init()
 	c.Cut(strings.NewReader(src), w)
@@ -164,9 +164,9 @@ func testComplement(complement bool, src, dst string, delimiter string, fields s
 	w := &bytes.Buffer{}
 
 	c := Cut{}
-	c.Complement = &complement
-	c.Delimiter = &delimiter
-	c.Fields = &fields
+	c.Complement = complement
+	c.Delimiter = delimiter
+	c.Fields = fields
 	c.LineDelim = '\n'
 	c.Init()
 	c.Cut(strings.NewReader(src), w)
@@ -179,8 +179,8 @@ func testComplement2(complement bool, src, dst string, characters string, t *tes
 	w := &bytes.Buffer{}
 
 	c := Cut{}
-	c.Complement = &complement
-	c.Characters = &characters
+	c.Complement = complement
+	c.Characters = characters
 	c.LineDelim = '\n'
 	c.Init()
 	c.Cut(strings.NewReader(src), w)
@@ -215,9 +215,9 @@ func testOutputDelimiter(src, dst string, delimiter string, fields string, outpu
 	w := &bytes.Buffer{}
 
 	c := Cut{}
-	c.Delimiter = &delimiter
-	c.Fields = &fields
-	c.OutputDelimiter = &outputDelimiter
+	c.Delimiter = delimiter
+	c.Fields = fields
+	c.OutputDelimiter = outputDelimiter
 	c.LineDelim = '\n'
 	c.Init()
 	c.Cut(strings.NewReader(src), w)
@@ -244,17 +244,17 @@ Chhattisgarh`
 
 func TestCmdOption(t *testing.T) {
 	c, _ := New([]string{"cut", "-f3"})
-	if c.Fields == nil || *c.Fields != "3" {
+	if c.Fields == "" || c.Fields != "3" {
 		t.Errorf("cut -f options fail\n")
 	}
 
 	c, _ = New([]string{"cut", "-c1-5"})
-	if c.Characters == nil || *c.Characters != "1-5" {
+	if c.Characters == "" || c.Characters != "1-5" {
 		t.Errorf("cut -c options fail\n")
 	}
 
 	c, _ = New([]string{"cut", "-c-5"})
-	if c.Characters == nil || *c.Characters != "-5" {
+	if c.Characters == "" || c.Characters != "-5" {
 		t.Errorf("cut -c options fail\n")
 	}
 }

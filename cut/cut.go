@@ -14,13 +14,13 @@ import (
 )
 
 type Cut struct {
-	Bytes           *string
-	Characters      *string
-	Delimiter       *string
-	Fields          *string
-	Complement      *bool
-	OnlyDelimited   *bool
-	OutputDelimiter *string
+	Bytes           string
+	Characters      string
+	Delimiter       string
+	Fields          string
+	Complement      bool
+	OnlyDelimited   bool
+	OutputDelimiter string
 	LineDelim       byte
 	filterCtrl
 }
@@ -30,37 +30,37 @@ func New(argv []string) (*Cut, []string) {
 
 	c := Cut{}
 
-	c.Bytes = command.Opt("b, bytes", "select only these bytes").
+	command.Opt("b, bytes", "select only these bytes").
 		Flags(flag.PosixShort).
-		NewString("")
+		Var(&c.Bytes)
 
-	c.Characters = command.Opt("c, characters", "select only these characters").
+	command.Opt("c, characters", "select only these characters").
 		Flags(flag.PosixShort).
-		NewString("")
+		Var(&c.Characters)
 
-	c.Delimiter = command.Opt("d, delimiter", "use DELIM instead of TAB for field delimiter").
+	command.Opt("d, delimiter", "use DELIM instead of TAB for field delimiter").
 		Flags(flag.PosixShort).
-		NewString("\t")
+		DefaultVar(&c.Delimiter, "\t")
 
-	c.Fields = command.Opt("f, fields", "select only these fields;  also print any line\n"+
+	command.Opt("f, fields", "select only these fields;  also print any line\n"+
 		" that contains no delimiter character, unless\n"+
 		" the -s option is specified").
 		Flags(flag.PosixShort).
-		NewString("")
+		Var(&c.Fields)
 
-	c.Complement = command.Opt("complement", "complement the set of selected bytes, characters\n"+
+	command.Opt("complement", "complement the set of selected bytes, characters\n"+
 		"or fields").
 		Flags(flag.PosixShort).
-		NewBool(false)
+		Var(&c.Complement)
 
-	c.OnlyDelimited = command.Opt("s, only-delimited", "do not print lines not containing delimiters").
+	command.Opt("s, only-delimited", "do not print lines not containing delimiters").
 		Flags(flag.PosixShort).
-		NewBool(false)
+		Var(&c.OnlyDelimited)
 
-	c.OutputDelimiter = command.Opt("output-delimiter", "use STRING as the output delimiter\n"+
+	command.Opt("output-delimiter", "use STRING as the output delimiter\n"+
 		"the default is to use the input delimiter").
 		Flags(flag.PosixShort).
-		NewString("")
+		Var(&c.OutputDelimiter)
 
 	zeroTerminated := command.Opt("zero-terminated", "line delimiter is NUL, not newline").
 		Flags(flag.PosixShort).
@@ -183,9 +183,9 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 
 		have := false
 		if c.isFields() {
-			ls := bytes.Split(line, []byte(*c.Delimiter))
+			ls := bytes.Split(line, []byte(c.Delimiter))
 			if len(ls) == 1 {
-				if c.isOnlyDelimited() {
+				if c.OnlyDelimited {
 					continue
 				}
 				buf.Write(line)
@@ -194,7 +194,7 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 
 			for i, v := range ls {
 				checkOk := c.check(i + 1)
-				if c.isComplement() {
+				if c.Complement {
 					checkOk = !checkOk
 				}
 
@@ -204,7 +204,7 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 				}
 			}
 
-			buf.Write(bytes.Join(output, []byte(*c.OutputDelimiter)))
+			buf.Write(bytes.Join(output, []byte(c.OutputDelimiter)))
 			output = output[:0]
 
 			goto write
@@ -212,7 +212,7 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 
 		for i, v := range line {
 			checkOk := c.check(i + 1)
-			if c.isComplement() {
+			if c.Complement {
 				checkOk = !checkOk
 			}
 
@@ -240,31 +240,23 @@ func (c *Cut) Cut(rs io.ReadSeeker, w io.Writer) {
 }
 
 func (c *Cut) isBytes() bool {
-	return c.Bytes != nil && len(*c.Bytes) > 0
+	return len(c.Bytes) > 0
 }
 
 func (c *Cut) isCharacters() bool {
-	return c.Characters != nil && len(*c.Characters) > 0
+	return len(c.Characters) > 0
 }
 
 func (c *Cut) isFields() bool {
-	return c.Fields != nil && len(*c.Fields) > 0
-}
-
-func (c *Cut) isComplement() bool {
-	return c.Complement != nil && *c.Complement
+	return len(c.Fields) > 0
 }
 
 func (c *Cut) isDelimiter() bool {
-	return c.Delimiter != nil && len(*c.Delimiter) > 0
+	return len(c.Delimiter) > 0
 }
 
 func (c *Cut) isOutputDelimiter() bool {
-	return c.OutputDelimiter != nil && len(*c.OutputDelimiter) > 0
-}
-
-func (c *Cut) isOnlyDelimited() bool {
-	return c.OnlyDelimited != nil && *c.OnlyDelimited
+	return len(c.OutputDelimiter) > 0
 }
 
 func (c *Cut) Init() {
@@ -299,14 +291,14 @@ func (c *Cut) Init() {
 	}
 
 	if c.isFields() {
-		c.init(*c.Fields)
-		if c.isDelimiter() && c.OutputDelimiter == nil {
+		c.init(c.Fields)
+		if c.isDelimiter() && c.OutputDelimiter == "" {
 			c.OutputDelimiter = c.Delimiter
 		}
 		return
 	}
 
-	c.init(*c.Characters)
+	c.init(c.Characters)
 
 }
 
