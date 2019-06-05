@@ -32,6 +32,7 @@ import (
 	"github.com/guonaihong/coreutils/true"
 	"github.com/guonaihong/coreutils/uname"
 	"github.com/guonaihong/coreutils/uniq"
+	"github.com/guonaihong/coreutils/unlink"
 	"github.com/guonaihong/coreutils/whoami"
 	"github.com/guonaihong/coreutils/yes"
 	"github.com/guonaihong/flag"
@@ -163,6 +164,10 @@ func main() {
 
 	parent.SubCommand("uniq", "Use the uniq subcommand", func() {
 		uniq.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("unlink", "Use the unlink subcommand", func() {
+		unlink.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("whoami", "Use the whoami subcommand", func() {

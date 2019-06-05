@@ -49,6 +49,7 @@ If you want to use the cat command
 * true [detail](./true/README.md)
 * uname [detail](./uname/README.md)
 * uniq [detail](./uniq/README.md)
+* unlink
 * whoami [detail](./whoami/README.md)
 * yes [detail](./yes/README.md)
 * shuf [detail](./shuf/README.md)

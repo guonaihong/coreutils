@@ -23,6 +23,7 @@ func main() {
 		"true",
 		"uname",
 		"uniq",
+		"unlink",
 		"whoami",
 		"yes",
 		"sleep",
