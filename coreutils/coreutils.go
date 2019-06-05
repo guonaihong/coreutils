@@ -11,6 +11,7 @@ import (
 	"github.com/guonaihong/coreutils/dirname"
 	"github.com/guonaihong/coreutils/echo"
 	"github.com/guonaihong/coreutils/head"
+	"github.com/guonaihong/coreutils/link"
 	"github.com/guonaihong/coreutils/md5sum"
 	"github.com/guonaihong/coreutils/paste"
 	"github.com/guonaihong/coreutils/pwd"
@@ -90,6 +91,10 @@ func main() {
 
 	parent.SubCommand("head", "Use the head subcommand", func() {
 		head.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("link", "Use the link subcommand", func() {
+		link.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("md5sum", "Use the md5sum subcommand", func() {

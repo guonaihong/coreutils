@@ -36,6 +36,7 @@ If you want to use the cat command
 * dirname [detail](./dirname/README.md)
 * echo [detail](./echo/README.md)
 * head [detail](./head/README.md)
+* link 
 * md5sum [detail](./md5sum/README.md)
 * paste [detail](./paste/README.md)
 * pwd [detail](./pwd/README.md)
@@ -60,4 +61,4 @@ If you want to use the cat command
 * sleep [detail](./sleep/README.md)
 
 ## progress
-progress = 32 / 92 = 34%
+progress = 33 / 92 = 35%
