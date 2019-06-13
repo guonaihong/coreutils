@@ -10,6 +10,7 @@ import (
 	"github.com/guonaihong/coreutils/cut"
 	"github.com/guonaihong/coreutils/dirname"
 	"github.com/guonaihong/coreutils/echo"
+	"github.com/guonaihong/coreutils/env"
 	"github.com/guonaihong/coreutils/head"
 	"github.com/guonaihong/coreutils/link"
 	"github.com/guonaihong/coreutils/md5sum"
@@ -88,6 +89,10 @@ func main() {
 
 	parent.SubCommand("echo", "Use the echo subcommand", func() {
 		echo.Main(os.Args[1:])
+	})
+
+	parent.SubCommand("env", "Use the env subcommand", func() {
+		env.Main(os.Args[1:])
 	})
 
 	parent.SubCommand("head", "Use the head subcommand", func() {
